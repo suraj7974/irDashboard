@@ -1,0 +1,64 @@
+{
+  "Name": "अरविंद हेमला",
+  "Aliases": ["आयतु हेमला"],
+  "Group/Battalion": "दक्षिण सब जोनल ब्युरो",
+  "Area/Region": "गंगालुर, बीजापुर",
+  "Involvement": "पार्टी सदस्य",
+  "History": "वर्ष 207 में सावनार आरपीसी-सीएनएम कमाण्डर बुधराम पद्म द्वारा संगठन में भर्ती। 2023 में गंगालुर एरिया कमेटी पीएलजीए सदस्य, 2024 में दक्षिण सबजोनल ब्युरो में पीएलजीए सदस्य।",
+  "Bounty": "Unknown",
+  "Villages Covered": ["सावनार", "गंगालुर"],
+  "Criminal Activities": [
+    {
+      "Sr. No.": 1,
+      "Incident": "टी.सी.ओ.सी योजना बनाते समय पुलिस मुठभेड़",
+      "Year": "2024",
+      "Location": "कोरचोली पहाड़ी"
+    }
+  ],
+  "Maoist Hierarchical Role Changes": [
+    {
+      "Year": "2023",
+      "Role": "गंगालुर एरिया कमेटी पीएलजीए सदस्य"
+    },
+    {
+      "Year": "2024",
+      "Role": "दक्षिण सबजोनल ब्युरो पीएलजीए सदस्य"
+    },
+    {
+      "Year": "सितम्बर 2024",
+      "Role": "दक्षिण सबजोनल ब्युरो पार्टी सदस्य"
+    }
+  ],
+  "Police Encounters Participated": [
+    {
+      "Year": "2024",
+      "Encounter Details": "कोरचोली पहाड़ी में पुलिस द्वारा घेराबंदी और फायरिंग"
+    }
+  ],
+  "Weapons/Assets Handled": ["सिंगल शार्ट"],
+  "Total Organizational Period": "207 to 2025",
+  "Important Points": ["आत्मसमर्पण दिनांक 3.03.2025", "सिंगल शार्ट हथियार धारित"],
+  "All Maoists Met": [
+    {
+      "Sr. No.": 1,
+      "Name": "हुंगा कलमू",
+      "Group": "पश्चिम बस्तर डीविजन डीव्हीसीएम",
+      "Year Met": "2024",
+      "Bounty/Rank/Importance": "डीव्हीसीएम"
+    },
+    {
+      "Sr. No.": 2,
+      "Name": "सोनू हपका",
+      "Group": "प.ब. डिवीजन",
+      "Year Met": "Unknown",
+      "Bounty/Rank/Importance": "एसीएम /सीएनएम कमाण्डर"
+    },
+    {
+      "Sr. No.": 3,
+      "Name": "सुजाता",
+      "Group": "दक्षिण सबजोनल ब्युरो",
+      "Year Met": "सितम्बर 2024",
+      "Bounty/Rank/Importance": "सीसीएम"
+    }
+  ]
+}

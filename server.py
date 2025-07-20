@@ -1,0 +1,133 @@
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import tempfile
+import os
+import sys
+import json
+from pathlib import Path
+
+# Add the parser directory to Python path
+parser_dir = Path(__file__).parent / "parser"
+sys.path.append(str(parser_dir))
+
+# Import your existing parser functions
+try:
+    from parser.main import extract_text_from_pdf, get_structured_summary
+except ImportError:
+    print(
+        "Error: Could not import parser functions. Make sure the parser directory is set up correctly."
+    )
+    sys.exit(1)
+
+app = FastAPI(title="IR Parser API", description="API for processing IR PDF documents")
+
+# Configure CORS to allow requests from React app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:3000",
+    ],  # React dev server ports
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/")
+async def root():
+    return {"message": "IR Parser API is running"}
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "ir-parser-api"}
+
+
+@app.post("/process-pdf")
+async def process_pdf(file: UploadFile = File(...)):
+    """
+    Process an uploaded PDF file and return structured JSON data
+    """
+    # Validate file type
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="File must be a PDF")
+
+    # Create temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+        try:
+            # Write uploaded file to temp location
+            content = await file.read()
+            temp_file.write(content)
+            temp_file.flush()
+
+            # Extract text using your existing function
+            print(f"Processing file: {file.filename}")
+            extracted_text = extract_text_from_pdf(temp_file.name)
+
+            # Get structured summary using your existing function
+            print("Getting structured summary...")
+            summary_json = get_structured_summary(extracted_text)
+
+            # Parse the JSON response
+            try:
+                # Remove any markdown formatting if present
+                if summary_json.startswith("```json"):
+                    summary_json = summary_json.split("```json")[1].split("```")[0]
+                elif summary_json.startswith("```"):
+                    summary_json = summary_json.split("```")[1].split("```")[0]
+
+                parsed_data = json.loads(summary_json)
+
+                return JSONResponse(
+                    content={
+                        "success": True,
+                        "filename": file.filename,
+                        "data": parsed_data,
+                        "raw_text_length": len(extracted_text),
+                    }
+                )
+
+            except json.JSONDecodeError as e:
+                print(f"JSON parse error: {e}")
+                print(f"Raw summary: {summary_json}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to parse AI response as JSON: {str(e)}",
+                )
+
+        except Exception as e:
+            print(f"Processing error: {e}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to process PDF: {str(e)}"
+            )
+
+        finally:
+            # Clean up temporary file
+            try:
+                os.unlink(temp_file.name)
+            except:
+                pass
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    print(f"Global exception: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "error": "Internal server error",
+            "detail": str(exc),
+        },
+    )
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    print("Starting IR Parser API server...")
+    print("Make sure you have set your OpenAI API key in parser/main.py")
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)

@@ -1,0 +1,308 @@
+import React from "react";
+import { motion } from "framer-motion";
+import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, Users } from "lucide-react";
+import { format } from "date-fns";
+import { IRReport } from "../types";
+
+interface ReportDetailModalProps {
+  report: IRReport;
+  isOpen: boolean;
+  onClose: () => void;
+  onDownload: (report: IRReport, type: "pdf") => void;
+}
+
+export default function ReportDetailModal({ report, isOpen, onClose, onDownload }: ReportDetailModalProps) {
+  if (!isOpen) return null;
+
+  const { metadata } = report;
+
+  // Debug log to see the actual data structure
+  console.log("Report metadata:", metadata);
+
+  // Handle both the expected structure and the actual data structure
+  const getData = (key: string, altKey?: string) => {
+    if (!metadata) return null;
+    // Try the expected structure first
+    if (metadata[key as keyof typeof metadata]) {
+      return metadata[key as keyof typeof metadata];
+    }
+    // Try the alternative key (like "Name" instead of "name")
+    if (altKey && (metadata as any)[altKey]) {
+      return (metadata as any)[altKey];
+    }
+    return null;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-primary-50 rounded-lg">
+              <FileText className="h-6 w-6 text-primary-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">{getData("name", "Name") || "Unknown Subject"}</h2>
+              <p className="text-sm text-gray-500">{report.original_filename}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => onDownload(report, "pdf")}
+              className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              <span>Download PDF</span>
+            </button>
+
+            <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="overflow-y-auto max-h-[calc(90vh-88px)]">
+          <div className="p-6 space-y-8">
+            {/* Show message if no metadata */}
+            {!metadata ? (
+              <div className="text-center py-8">
+                <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Processing in Progress</h3>
+                <p className="text-gray-500">This report is still being processed. Detailed information will be available once processing is complete.</p>
+
+                {/* Basic file information */}
+                <div className="mt-6 bg-gray-50 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">File Information</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Filename:</span>
+                      <span className="text-gray-900">{report.original_filename}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Upload Date:</span>
+                      <span className="text-gray-900">{format(new Date(report.uploaded_at), "PPP")}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Status:</span>
+                      <span className="text-gray-900 capitalize">{report.status}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">File Size:</span>
+                      <span className="text-gray-900">{(report.file_size / 1024 / 1024).toFixed(2)} MB</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Basic Information */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="flex items-start space-x-3">
+                        <User className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Name</p>
+                          <p className="text-sm text-gray-600">{getData("name", "Name") || "Unknown"}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <Shield className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Group/Battalion</p>
+                          <p className="text-sm text-gray-600">{getData("group_battalion", "Group/Battalion") || "Unknown"}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Area/Region</p>
+                          <p className="text-sm text-gray-600">{getData("area_region", "Area/Region") || "Unknown"}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-start space-x-3">
+                        <Zap className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Bounty</p>
+                          <p className="text-sm text-gray-600">{getData("bounty", "Bounty") || "Unknown"}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <Clock className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Organizational Period</p>
+                          <p className="text-sm text-gray-600">{getData("organizational_period", "Organizational Period") || "Unknown"}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <Calendar className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Upload Date</p>
+                          <p className="text-sm text-gray-600">{format(new Date(report.uploaded_at), "PPP")}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* All Available Data */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">All Available Information</h3>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {metadata &&
+                        Object.entries(metadata).map(([key, value]) => {
+                          if (!value || (Array.isArray(value) && value.length === 0)) return null;
+
+                          return (
+                            <div key={key} className="border-b border-gray-200 pb-2">
+                              <p className="text-sm font-medium text-gray-900 capitalize">{key.replace(/_/g, " ")}:</p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {Array.isArray(value) ? value.join(", ") : typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)}
+                              </p>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary */}
+                {report.summary && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Summary</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-lg">{report.summary}</p>
+                  </div>
+                )}
+
+                {/* Aliases */}
+                {(getData("aliases", "Aliases") || getData("aliases", "उपनाम")) && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Aliases</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {(Array.isArray(getData("aliases", "Aliases"))
+                        ? getData("aliases", "Aliases")
+                        : typeof getData("aliases", "Aliases") === "string"
+                        ? [getData("aliases", "Aliases")]
+                        : ([] as string[])
+                      ).map((alias: string, index: number) => (
+                        <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {alias}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Villages Covered */}
+                {(getData("villages_covered", "Villages Covered") || getData("villages_covered", "गांव")) && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Villages Covered</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {(Array.isArray(getData("villages_covered", "Villages Covered"))
+                        ? getData("villages_covered", "Villages Covered")
+                        : typeof getData("villages_covered", "Villages Covered") === "string"
+                        ? [getData("villages_covered", "Villages Covered")]
+                        : ([] as string[])
+                      ).map((village: string, index: number) => (
+                        <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {village}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Information */}
+                <div className="space-y-6">
+                  {getData("involvement", "Involvement") && (
+                    <div>
+                      <h4 className="text-md font-medium text-gray-900 mb-2">Involvement</h4>
+                      <p className="text-sm text-gray-600 leading-relaxed">{getData("involvement", "Involvement")}</p>
+                    </div>
+                  )}
+
+                  {getData("history", "History") && (
+                    <div>
+                      <h4 className="text-md font-medium text-gray-900 mb-2">History</h4>
+                      <p className="text-sm text-gray-600 leading-relaxed">{getData("history", "History")}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Criminal Activities */}
+                {metadata.criminal_activities && metadata.criminal_activities.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Criminal Activities</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border border-gray-200 rounded-lg">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sr. No.</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Incident</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {metadata.criminal_activities.map((activity, index) => (
+                            <tr key={index}>
+                              <td className="px-4 py-3 text-sm text-gray-900">{activity.sr_no}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{activity.incident}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{activity.year}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{activity.location}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Police Encounters */}
+                {metadata.police_encounters && metadata.police_encounters.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Police Encounters</h3>
+                    <div className="space-y-3">
+                      {metadata.police_encounters.map((encounter, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">{encounter.year}</span>
+                          </div>
+                          <p className="text-sm text-gray-600">{encounter.encounter_details}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}

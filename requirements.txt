@@ -1,0 +1,8 @@
+# Python dependencies for the FastAPI server
+fastapi
+uvicorn
+python-multipart
+openai
+pdf2image
+pytesseract
+Pillow
