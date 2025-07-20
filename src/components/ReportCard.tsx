@@ -57,7 +57,11 @@ export default function ReportCard({ report, onViewDetails, onDownload }: Report
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 text-lg leading-tight">{report.metadata?.name || "Unknown Subject"}</h3>
-              <p className="text-sm text-gray-500 mt-1">{report.original_filename}</p>
+              <p className="text-sm text-gray-500 mt-1 truncate max-w-xs" title={report.original_filename}>
+                {report.original_filename.length > 40 
+                  ? `${report.original_filename.substring(0, 40)}...` 
+                  : report.original_filename}
+              </p>
               <div className="flex items-center space-x-4 mt-2">
                 <div className="flex items-center space-x-1 text-sm text-gray-500">
                   <Calendar className="h-4 w-4" />
@@ -81,92 +85,7 @@ export default function ReportCard({ report, onViewDetails, onDownload }: Report
       {/* Content */}
       {report.status === "completed" && report.metadata && (
         <div className="p-6">
-          {/* Key Information Grid */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            {report.metadata.group_battalion && (
-              <div className="flex items-center space-x-2">
-                <Shield className="h-4 w-4 text-gray-400" />
-                <div>
-                  <p className="text-xs text-gray-500">Group/Battalion</p>
-                  <p className="text-sm font-medium text-gray-900">{report.metadata.group_battalion}</p>
-                </div>
-              </div>
-            )}
-
-            {report.metadata.area_region && (
-              <div className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4 text-gray-400" />
-                <div>
-                  <p className="text-xs text-gray-500">Area/Region</p>
-                  <p className="text-sm font-medium text-gray-900">{report.metadata.area_region}</p>
-                </div>
-              </div>
-            )}
-
-            {report.metadata.bounty && (
-              <div className="flex items-center space-x-2">
-                <Zap className="h-4 w-4 text-gray-400" />
-                <div>
-                  <p className="text-xs text-gray-500">Bounty</p>
-                  <p className="text-sm font-medium text-gray-900">{report.metadata.bounty}</p>
-                </div>
-              </div>
-            )}
-
-            {report.metadata.organizational_period && (
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-gray-400" />
-                <div>
-                  <p className="text-xs text-gray-500">Organizational Period</p>
-                  <p className="text-sm font-medium text-gray-900">{report.metadata.organizational_period}</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Aliases */}
-          {report.metadata.aliases && report.metadata.aliases.length > 0 && (
-            <div className="mb-4">
-              <p className="text-xs text-gray-500 mb-2">Aliases</p>
-              <div className="flex flex-wrap gap-2">
-                {report.metadata.aliases.slice(0, 3).map((alias, index) => (
-                  <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md">
-                    {alias}
-                  </span>
-                ))}
-                {report.metadata.aliases.length > 3 && (
-                  <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-md">+{report.metadata.aliases.length - 3} more</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Villages Covered */}
-          {report.metadata.villages_covered && report.metadata.villages_covered.length > 0 && (
-            <div className="mb-4">
-              <p className="text-xs text-gray-500 mb-2">Villages Covered</p>
-              <div className="flex flex-wrap gap-1">
-                {report.metadata.villages_covered.slice(0, 4).map((village, index) => (
-                  <span key={index} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-md">
-                    {village}
-                  </span>
-                ))}
-                {report.metadata.villages_covered.length > 4 && (
-                  <span className="px-2 py-1 bg-blue-50 text-blue-500 text-xs rounded-md">+{report.metadata.villages_covered.length - 4} more</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Summary */}
-          {report.summary && (
-            <div className="mb-6">
-              <p className="text-xs text-gray-500 mb-2">Summary</p>
-              <p className="text-sm text-gray-700 line-clamp-3">{report.summary}</p>
-            </div>
-          )}
-
-          {/* Stats */}
+          {/* Stats - Only the 3 requested sections */}
           <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
             <div className="text-center">
               <p className="text-lg font-semibold text-gray-900">{report.metadata.criminal_activities?.length || 0}</p>
