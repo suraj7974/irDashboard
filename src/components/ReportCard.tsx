@@ -58,9 +58,7 @@ export default function ReportCard({ report, onViewDetails, onDownload }: Report
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 text-lg leading-tight">{report.metadata?.name || "Unknown Subject"}</h3>
               <p className="text-sm text-gray-500 mt-1 truncate max-w-xs" title={report.original_filename}>
-                {report.original_filename.length > 40 
-                  ? `${report.original_filename.substring(0, 40)}...` 
-                  : report.original_filename}
+                {report.original_filename.length > 40 ? `${report.original_filename.substring(0, 40)}...` : report.original_filename}
               </p>
               <div className="flex items-center space-x-4 mt-2">
                 <div className="flex items-center space-x-1 text-sm text-gray-500">

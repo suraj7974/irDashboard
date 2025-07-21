@@ -3,10 +3,11 @@ import os
 from pdf2image import convert_from_path
 import pytesseract
 import json
+from dotenv import load_dotenv
 
-client = OpenAI(
-    api_key="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"
-)  # Replace with your OpenAI API key
+load_dotenv()
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 OUTPUT_FOLDER = "./summaries/"
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
