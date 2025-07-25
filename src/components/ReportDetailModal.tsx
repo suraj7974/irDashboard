@@ -177,12 +177,40 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                         Object.entries(metadata).map(([key, value]) => {
                           if (!value || (Array.isArray(value) && value.length === 0)) return null;
 
+                          // Function to render complex array values
+                          const renderValue = () => {
+                            if (Array.isArray(value)) {
+                              // Handle arrays of objects (like criminal_activities, police_encounters, etc.)
+                              if (value.length > 0 && typeof value[0] === "object") {
+                                return (
+                                  <div className="space-y-2">
+                                    {value.map((item, index) => (
+                                      <div key={index} className="bg-white p-2 rounded border text-xs">
+                                        {Object.entries(item).map(([itemKey, itemValue]) => (
+                                          <div key={itemKey} className="flex justify-between">
+                                            <span className="font-medium text-gray-500">{itemKey.replace(/_/g, " ")}:</span>
+                                            <span className="text-gray-700">{String(itemValue)}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              } else {
+                                // Handle arrays of strings
+                                return <span>{value.join(", ")}</span>;
+                              }
+                            } else if (typeof value === "object") {
+                              return <pre className="text-xs bg-white p-2 rounded border overflow-x-auto">{JSON.stringify(value, null, 2)}</pre>;
+                            } else {
+                              return <span>{String(value)}</span>;
+                            }
+                          };
+
                           return (
                             <div key={key} className="border-b border-gray-200 pb-2">
                               <p className="text-sm font-medium text-gray-900 capitalize">{key.replace(/_/g, " ")}:</p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {Array.isArray(value) ? value.join(", ") : typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)}
-                              </p>
+                              <div className="text-sm text-gray-600 mt-1">{renderValue()}</div>
                             </div>
                           );
                         })}
@@ -293,6 +321,81 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">{encounter.year}</span>
                           </div>
                           <p className="text-sm text-gray-600">{encounter.encounter_details}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hierarchical Role Changes */}
+                {metadata.hierarchical_role_changes && metadata.hierarchical_role_changes.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Hierarchical Role Changes</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border border-gray-200 rounded-lg">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {metadata.hierarchical_role_changes.map((change, index) => (
+                            <tr key={index}>
+                              <td className="px-4 py-3 text-sm text-gray-900">{change.year}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{change.role}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Maoists Met */}
+                {metadata.maoists_met && metadata.maoists_met.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Maoists Met</h3>
+                    <div className="space-y-3">
+                      {metadata.maoists_met.map((contact, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-blue-50">
+                          <div className="grid grid-cols-2 gap-4">
+                            {Object.entries(contact).map(([key, value]) => (
+                              <div key={key} className="flex flex-col">
+                                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{key.replace(/_/g, " ")}</span>
+                                <span className="text-sm text-gray-900 mt-1">{String(value)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Weapons/Assets */}
+                {metadata.weapons_assets && metadata.weapons_assets.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Weapons/Assets</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {metadata.weapons_assets.map((weapon, index) => (
+                        <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                          {weapon}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Important Points */}
+                {metadata.important_points && metadata.important_points.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Important Points</h3>
+                    <div className="space-y-2">
+                      {metadata.important_points.map((point, index) => (
+                        <div key={index} className="flex items-start space-x-2">
+                          <span className="flex-shrink-0 w-2 h-2 bg-yellow-400 rounded-full mt-2"></span>
+                          <p className="text-sm text-gray-700">{point}</p>
                         </div>
                       ))}
                     </div>
