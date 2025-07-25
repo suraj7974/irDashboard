@@ -16,7 +16,6 @@ export default function Dashboard() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedReport, setSelectedReport] = useState<IRReport | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [stats, setStats] = useState({
@@ -209,20 +208,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleSearch = useCallback(async (query: string) => {
-    if (query.length > 1) {
-      try {
-        const searchSuggestions = await IRReportAPI.getSearchSuggestions(query);
-        setSuggestions(searchSuggestions);
-      } catch (error) {
-        console.error("Failed to get suggestions:", error);
-        setSuggestions([]);
-      }
-    } else {
-      setSuggestions([]);
-    }
-  }, []);
-
   const handleViewDetails = (report: IRReport) => {
     setSelectedReport(report);
     setShowDetailModal(true);
@@ -279,7 +264,12 @@ export default function Dashboard() {
 
         {/* Search Section */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
-          <SearchBar filters={searchFilters} onFiltersChange={setSearchFilters} suggestions={suggestions} onSearch={handleSearch} />
+          <SearchBar
+            filters={searchFilters}
+            onFiltersChange={setSearchFilters}
+            onSearch={() => {}} // Search is handled internally in SearchBar
+            reports={reports}
+          />
         </motion.div>
 
         {/* Reports Grid */}
