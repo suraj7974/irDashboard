@@ -1,5 +1,5 @@
 {
-  "name": "irdash",
+  "name": "irdash-client",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,9 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "server": "python server.py",
-    "setup-db": "echo 'Run the SQL in supabase-setup.sql in your Supabase dashboard'"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.4",

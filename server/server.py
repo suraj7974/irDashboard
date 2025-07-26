@@ -6,6 +6,10 @@ import os
 import sys
 import json
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Add the parser directory to Python path
 parser_dir = Path(__file__).parent / "parser"
@@ -22,14 +26,16 @@ except ImportError:
 
 app = FastAPI(title="IR Parser API", description="API for processing IR PDF documents")
 
+# Get allowed origins from environment variable
+allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173,http://localhost:5174,http://localhost:3000",
+).split(",")
+
 # Configure CORS to allow requests from React app
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:3000",
-    ],  # React dev server ports
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -128,6 +134,11 @@ async def global_exception_handler(request, exc):
 if __name__ == "__main__":
     import uvicorn
 
+    # Get configuration from environment variables
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+
     print("Starting IR Parser API server...")
-    print("Make sure you have set your OpenAI API key in parser/main.py")
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+    print(f"Server will run on {host}:{port}")
+    print("Make sure you have set your OpenAI API key in the .env file")
+    uvicorn.run("server:app", host=host, port=port, reload=True)
