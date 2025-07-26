@@ -27,3 +27,9 @@ __pycache__/
 .vite/
 
 sever/__pycache__/
+
+client/.env
+client/.env.example
+server/.env
+server/.env.example
+server/.do
