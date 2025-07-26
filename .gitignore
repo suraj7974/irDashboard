@@ -26,10 +26,21 @@ dist-ssr
 __pycache__/
 .vite/
 
-sever/__pycache__/
+# Fixed typo: "server" not "sever"
+server/__pycache__/
 
+# Environment files
 client/.env
-client/.env.example
+client/.env.*
+!client/.env.example
 server/.env
-server/.env.example
-server/.do
+server/.env.*
+!server/.env.example
+
+# Deployment configs
+server/.do/
+.do/
+
+# Python cache
+*.pyc
+.pytest_cache/
