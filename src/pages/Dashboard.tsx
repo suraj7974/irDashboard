@@ -238,19 +238,6 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-500">Incident Reports Management System</p>
               </div>
             </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-6 text-sm">
-                <div className="text-center">
-                  <p className="font-semibold text-gray-900">{stats.totalReports}</p>
-                  <p className="text-gray-500">Total Reports</p>
-                </div>
-                <div className="text-center">
-                  <p className="font-semibold text-orange-600">{stats.processingReports}</p>
-                  <p className="text-gray-500">Processing</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
