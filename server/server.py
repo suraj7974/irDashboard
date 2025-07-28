@@ -8,20 +8,21 @@ import os
 import sys
 import json
 
-# Load .env file
+# Load environment variables from .env
 load_dotenv()
 
-# Setup FastAPI app
-app = FastAPI(title="IR Parser API", description="API for processing IR PDF documents")
+# Initialize FastAPI app
+app = FastAPI(title="IR Parser API", description="Processes IR PDFs and returns structured data.")
 
-# Allow CORS for specific origins
+# Load allowed origins from environment or fallback to common local dev
 allowed_origins = os.getenv(
     "ALLOWED_ORIGINS",
-    "http://localhost:5173,http://localhost:5174,http://localhost:3000"
+    "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
 ).split(",")
 
-print("CORS allowed origins:", allowed_origins)
+print("✅ Allowed CORS Origins:", allowed_origins)
 
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -30,55 +31,53 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include parser directory in path
+# Import parser functions from parser/main.py
 parser_dir = Path(__file__).parent / "parser"
 sys.path.append(str(parser_dir))
 
-# Import parsing functions
 try:
     from parser.main import extract_text_from_pdf, get_structured_summary
 except ImportError as e:
-    print("Failed to import parser functions:", e)
+    print("❌ Could not import parser functions:", e)
     sys.exit(1)
 
-# Routes
+# ---------------- ROUTES ---------------- #
+
 @app.get("/")
 async def root():
     return {"message": "IR Parser API is running"}
 
 @app.get("/health")
-async def health_check():
+async def health():
     return {"status": "healthy", "service": "ir-parser-api"}
 
 @app.post("/process-pdf")
 async def process_pdf(file: UploadFile = File(...)):
-    """
-    Accepts a PDF file and returns extracted structured data.
-    """
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="File must be a PDF")
 
+    # Save uploaded file temporarily
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
         try:
-            # Save file
             content = await file.read()
             temp_file.write(content)
             temp_file.flush()
 
-            print(f"Processing file: {file.filename}")
+            print(f"📄 Received file: {file.filename}")
 
-            # Parse text and structure
+            # Step 1: Extract text
             extracted_text = extract_text_from_pdf(temp_file.name)
-            print("Extracted text, getting structured summary...")
+            print("🔍 Text extracted. Generating summary...")
+
+            # Step 2: Get structured JSON summary
             summary_json = get_structured_summary(extracted_text)
 
-            # Clean markdown formatting if present
+            # Step 3: Clean and parse JSON (remove Markdown fences if any)
             if summary_json.startswith("```json"):
                 summary_json = summary_json.split("```json")[1].split("```")[0]
             elif summary_json.startswith("```"):
                 summary_json = summary_json.split("```")[1].split("```")[0]
 
-            # Convert to dict
             parsed_data = json.loads(summary_json)
 
             return JSONResponse(
@@ -91,41 +90,37 @@ async def process_pdf(file: UploadFile = File(...)):
             )
 
         except json.JSONDecodeError as e:
-            print("JSON parse error:", e)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to parse AI response as JSON: {str(e)}"
-            )
+            print("❌ JSON decode error:", e)
+            raise HTTPException(status_code=500, detail=f"Invalid JSON: {str(e)}")
+
         except Exception as e:
-            print("Processing error:", e)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to process PDF: {str(e)}"
-            )
+            print("❌ PDF processing error:", e)
+            raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")
+
         finally:
             try:
                 os.unlink(temp_file.name)
             except:
                 pass
 
+# ---------------- EXCEPTION HANDLER ---------------- #
+
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    print(f"Unhandled exception: {exc}")
+async def handle_all_exceptions(request, exc):
+    print(f"🔥 Uncaught error: {exc}")
     return JSONResponse(
         status_code=500,
-        content={
-            "success": False,
-            "error": "Internal server error",
-            "detail": str(exc),
-        },
+        content={"success": False, "error": "Internal server error", "detail": str(exc)},
     )
 
-# Run server
+# ---------------- MAIN ENTRY POINT ---------------- #
+
 if __name__ == "__main__":
     import uvicorn
 
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8000"))
 
-    print(f"Starting server at http://{host}:{port}")
+    print(f"🚀 Starting server at http://{host}:{port}")
+    print("ℹ️  Make sure your .env contains the correct OPENAI_API_KEY and ALLOWED_ORIGINS")
     uvicorn.run("server:app", host=host, port=port, reload=True)
