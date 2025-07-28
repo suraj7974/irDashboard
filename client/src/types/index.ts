@@ -10,6 +10,13 @@ export interface IRReport {
   summary?: string;
   error_message?: string;
   metadata?: IRReportMetadata;
+  // Manual details (editable once)
+  police_station?: string;
+  division?: string;
+  area_committee?: string;
+  uid_for_name?: string;
+  rank?: string;
+  manual_details_set?: boolean;
 }
 
 export interface IRReportMetadata {

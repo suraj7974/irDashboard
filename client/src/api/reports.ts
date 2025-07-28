@@ -50,6 +50,28 @@ export class IRReportAPI {
     return data;
   }
 
+  // Update manual details for a report
+  static async updateManualDetails(
+    id: string,
+    manualDetails: {
+      police_station?: string;
+      division?: string;
+      area_committee?: string;
+      uid_for_name?: string;
+      uid_for_maoist?: string;
+      rank?: string;
+      manual_details_set?: boolean;
+    }
+  ): Promise<IRReport> {
+    const { data, error } = await supabase.from(TABLES.IR_REPORTS).update(manualDetails).eq("id", id).select().single();
+
+    if (error) {
+      throw new Error(`Manual details update failed: ${error.message}`);
+    }
+
+    return data;
+  }
+
   // Upload parsed JSON to storage
   static async uploadParsedJSON(reportId: string, jsonData: any): Promise<string> {
     const fileName = `${reportId}/parsed.json`;

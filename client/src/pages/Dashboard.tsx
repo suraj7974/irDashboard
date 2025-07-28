@@ -72,7 +72,12 @@ export default function Dashboard() {
           report.metadata?.name?.toLowerCase().includes(query) ||
           report.metadata?.area_region?.toLowerCase().includes(query) ||
           report.metadata?.aliases?.some((alias) => alias.toLowerCase().includes(query)) ||
-          report.metadata?.villages_covered?.some((village) => village.toLowerCase().includes(query))
+          report.metadata?.villages_covered?.some((village) => village.toLowerCase().includes(query)) ||
+          report.police_station?.toLowerCase().includes(query) ||
+          report.division?.toLowerCase().includes(query) ||
+          report.area_committee?.toLowerCase().includes(query) ||
+          report.uid_for_name?.toLowerCase().includes(query) ||
+          report.rank?.toLowerCase().includes(query)
       );
     }
 
@@ -123,7 +128,7 @@ export default function Dashboard() {
         // Update progress for upload complete
         setUploadProgress((prev) => prev.map((p, idx) => (idx === i ? { ...p, progress: 30, id } : p)));
 
-        // Create initial report record
+        // Create initial report record (without manual details)
         const reportData = {
           id,
           filename: `${id}/original.pdf`,
@@ -223,6 +228,10 @@ export default function Dashboard() {
     }
   };
 
+  const handleReportUpdate = (updatedReport: IRReport) => {
+    setReports((prevReports) => prevReports.map((report) => (report.id === updatedReport.id ? updatedReport : report)));
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -280,10 +289,16 @@ export default function Dashboard() {
               ))}
             </div>
           ) : filteredReports.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <AnimatePresence>
                 {filteredReports.map((report) => (
-                  <ReportCard key={report.id} report={report} onViewDetails={handleViewDetails} onDownload={handleDownload} />
+                  <ReportCard
+                    key={report.id}
+                    report={report}
+                    onViewDetails={handleViewDetails}
+                    onDownload={handleDownload}
+                    onReportUpdate={handleReportUpdate}
+                  />
                 ))}
               </AnimatePresence>
             </div>

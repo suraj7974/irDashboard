@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, Users } from "lucide-react";
+import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, Users, Building2, Hash, Award, User2 } from "lucide-react";
 import { format } from "date-fns";
 import { IRReport } from "../types";
 
@@ -110,6 +110,68 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
               </div>
             ) : (
               <>
+                {/* Administrative Details Section */}
+                {(report.police_station || report.division || report.area_committee || report.uid_for_name || report.rank) && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Administrative Details</h3>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        {report.police_station && (
+                          <div className="flex items-start space-x-3">
+                            <Building2 className="h-5 w-5 text-blue-600 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Police Station</p>
+                              <p className="text-sm text-gray-600">{report.police_station}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {report.division && (
+                          <div className="flex items-start space-x-3">
+                            <MapPin className="h-5 w-5 text-blue-600 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Division</p>
+                              <p className="text-sm text-gray-600">{report.division}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {report.area_committee && (
+                          <div className="flex items-start space-x-3">
+                            <Users className="h-5 w-5 text-blue-600 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Area Committee</p>
+                              <p className="text-sm text-gray-600">{report.area_committee}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-4">
+                        {report.uid_for_name && (
+                          <div className="flex items-start space-x-3">
+                            <Hash className="h-5 w-5 text-blue-600 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">UID for Name</p>
+                              <p className="text-sm text-gray-600">{report.uid_for_name}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {report.rank && (
+                          <div className="flex items-start space-x-3">
+                            <Award className="h-5 w-5 text-blue-600 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Rank</p>
+                              <p className="text-sm text-gray-600">{report.rank}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Basic Information */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>

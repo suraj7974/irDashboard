@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, FileText, Loader2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,8 +11,6 @@ interface FileUploadProps {
 }
 
 export default function FileUpload({ onUpload, uploading, uploadProgress }: FileUploadProps) {
-  const [dragActive, setDragActive] = useState(false);
-
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       onUpload(acceptedFiles);
@@ -31,6 +29,7 @@ export default function FileUpload({ onUpload, uploading, uploadProgress }: File
 
   return (
     <div className="w-full max-w-4xl mx-auto">
+      {/* File Upload Area */}
       <motion.div
         className={`
           relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
