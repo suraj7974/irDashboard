@@ -15,6 +15,7 @@ interface ReportCardProps {
 export default function ReportCard({ report, onViewDetails, onDownload, onReportUpdate }: ReportCardProps) {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [savingField, setSavingField] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [fieldValues, setFieldValues] = useState({
     police_station: report.police_station || "",
     division: report.division || "",
@@ -25,9 +26,47 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
 
   const rankOptions = ["Szc", "Dvc", "Acm /ppcm", "Coy", "BN", "Pm", "Militia", "Rpc", "Others"];
 
+  // Client-side validation functions
+  const validatePoliceStation = (value: string): string | null => {
+    if (!value || !value.trim()) return null; // Empty values are allowed
+    const textOnlyRegex = /^[A-Za-z\s\-\.]*$/;
+    if (!textOnlyRegex.test(value)) {
+      return "Police station must contain only letters, spaces, hyphens, and periods";
+    }
+    return null;
+  };
+
+  const validateUidForName = (value: string): string | null => {
+    if (!value || !value.trim()) return null; // Empty values are allowed
+    const numbersOnlyRegex = /^[0-9]+$/;
+    if (!numbersOnlyRegex.test(value)) {
+      return "UID for Name must contain only numbers";
+    }
+    return null;
+  };
+
+  const validateField = (fieldName: string, value: string): string | null => {
+    switch (fieldName) {
+      case "police_station":
+        return validatePoliceStation(value);
+      case "uid_for_name":
+        return validateUidForName(value);
+      default:
+        return null; // No validation for other fields
+    }
+  };
+
   const handleSaveField = async (fieldName: string, value: string) => {
     try {
       setSavingField(fieldName);
+      setValidationError(null);
+
+      // Client-side validation
+      const validationError = validateField(fieldName, value);
+      if (validationError) {
+        setValidationError(validationError);
+        return;
+      }
 
       const updatedReport = await IRReportAPI.updateManualDetails(report.id, {
         [fieldName]: value,
@@ -38,7 +77,8 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
       }
     } catch (error) {
       console.error(`Failed to update ${fieldName}:`, error);
-      alert(`Failed to update ${fieldName}. Please try again.`);
+      const errorMessage = error instanceof Error ? error.message : `Failed to update ${fieldName}. Please try again.`;
+      setValidationError(errorMessage);
     } finally {
       setSavingField(null);
     }
@@ -50,6 +90,7 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
       [fieldName]: (report[fieldName as keyof IRReport] || "") as string,
     }));
     setEditingField(null);
+    setValidationError(null);
   };
 
   // Each field can be edited if it's empty (not set yet)
@@ -83,7 +124,10 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
           {isDropdown ? (
             <select
               value={fieldValues[fieldName]}
-              onChange={(e) => setFieldValues((prev) => ({ ...prev, [fieldName]: e.target.value }))}
+              onChange={(e) => {
+                setFieldValues((prev) => ({ ...prev, [fieldName]: e.target.value }));
+                setValidationError(null); // Clear validation error on change
+              }}
               className="w-full px-3 py-2 text-sm border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-3"
             >
               <option value="">Select {label.toLowerCase()}</option>
@@ -98,10 +142,27 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
               <input
                 type="text"
                 value={fieldValues[fieldName]}
-                onChange={(e) => setFieldValues((prev) => ({ ...prev, [fieldName]: e.target.value }))}
-                className="w-full px-3 py-2 text-sm border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-2"
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  setFieldValues((prev) => ({ ...prev, [fieldName]: newValue }));
+                  // Clear validation error on change
+                  setValidationError(null);
+
+                  // Real-time validation feedback for specific fields
+                  if (fieldName === "police_station" || fieldName === "uid_for_name") {
+                    const error = validateField(fieldName, newValue);
+                    if (error) {
+                      setValidationError(error);
+                    }
+                  }
+                }}
+                className={`w-full px-3 py-2 text-sm border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 ${
+                  validationError ? "border-red-300 focus:border-red-500" : "border-blue-200 focus:border-blue-500"
+                }`}
                 placeholder={placeholder}
               />
+              {/* Validation error message */}
+              {validationError && <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">{validationError}</div>}
             </>
           )}
           <div className="flex justify-end space-x-3">
@@ -114,7 +175,7 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
             </button>
             <button
               onClick={() => handleSaveField(fieldName, fieldValues[fieldName])}
-              disabled={isSaving}
+              disabled={isSaving || !!validationError}
               className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all duration-200"
             >
               {isSaving ? "Saving..." : "Save"}
@@ -139,6 +200,7 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
               onClick={() => {
                 setFieldValues((prev) => ({ ...prev, [fieldName]: currentValue }));
                 setEditingField(fieldName);
+                setValidationError(null); // Clear any previous validation errors
               }}
               className="text-sm text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-100 transition-all duration-200"
             >
@@ -163,6 +225,7 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
             onClick={() => {
               setFieldValues((prev) => ({ ...prev, [fieldName]: "" }));
               setEditingField(fieldName);
+              setValidationError(null); // Clear any previous validation errors
             }}
             className="text-sm text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-100 transition-all duration-200"
           >
@@ -225,10 +288,10 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
             <div className="space-y-4">
               {/* Grid for all fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {renderField("police_station", "Police Station", <Building2 className="h-4 w-4 text-blue-600" />, "Enter police station")}
+                {renderField("police_station", "Police Station", <Building2 className="h-4 w-4 text-blue-600" />, "Enter police station (text only)")}
                 {renderField("division", "Division", <MapPin className="h-4 w-4 text-blue-600" />, "Enter division")}
                 {renderField("area_committee", "Area Committee", <Users className="h-4 w-4 text-blue-600" />, "Enter area committee")}
-                {renderField("uid_for_name", "UID for Name", <Hash className="h-4 w-4 text-blue-600" />, "Enter UID for name")}
+                {renderField("uid_for_name", "UID for Name", <Hash className="h-4 w-4 text-blue-600" />, "Enter unique ID (numbers only)")}
                 {renderField("rank", "Rank", <Award className="h-4 w-4 text-blue-600" />, "Select rank", true)}
               </div>
 

@@ -50,7 +50,26 @@ export class IRReportAPI {
     return data;
   }
 
-  // Update manual details for a report
+  // Validation functions
+  private static validatePoliceStation(value: string): string | null {
+    if (!value || !value.trim()) return null; // Empty values are allowed
+    const textOnlyRegex = /^[A-Za-z\s\-\.]*$/;
+    if (!textOnlyRegex.test(value)) {
+      return "Police station must contain only letters, spaces, hyphens, and periods";
+    }
+    return null;
+  }
+
+  private static validateUidForName(value: string): string | null {
+    if (!value || !value.trim()) return null; // Empty values are allowed
+    const numbersOnlyRegex = /^[0-9]+$/;
+    if (!numbersOnlyRegex.test(value)) {
+      return "UID for Name must contain only numbers";
+    }
+    return null;
+  }
+
+  // Update manual details for a report with validation
   static async updateManualDetails(
     id: string,
     manualDetails: {
@@ -58,14 +77,38 @@ export class IRReportAPI {
       division?: string;
       area_committee?: string;
       uid_for_name?: string;
-      uid_for_maoist?: string;
       rank?: string;
-      manual_details_set?: boolean;
     }
   ): Promise<IRReport> {
+    // Client-side validation
+    if (manualDetails.police_station !== undefined) {
+      const policeStationError = this.validatePoliceStation(manualDetails.police_station);
+      if (policeStationError) {
+        throw new Error(policeStationError);
+      }
+    }
+
+    if (manualDetails.uid_for_name !== undefined) {
+      const uidError = this.validateUidForName(manualDetails.uid_for_name);
+      if (uidError) {
+        throw new Error(uidError);
+      }
+    }
+
     const { data, error } = await supabase.from(TABLES.IR_REPORTS).update(manualDetails).eq("id", id).select().single();
 
     if (error) {
+      // Handle specific database constraint errors
+      if (error.code === "23505" && error.message.includes("unique_uid_for_name")) {
+        throw new Error("This UID for Name is already in use. Please choose a different number.");
+      }
+      if (error.code === "23514" && error.message.includes("check_police_station_text_only")) {
+        throw new Error("Police station must contain only letters, spaces, hyphens, and periods");
+      }
+      if (error.code === "23514" && error.message.includes("check_uid_for_name_numbers_only")) {
+        throw new Error("UID for Name must contain only numbers");
+      }
+
       throw new Error(`Manual details update failed: ${error.message}`);
     }
 
