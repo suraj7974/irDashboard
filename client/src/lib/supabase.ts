@@ -8,6 +8,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Storage bucket names
 export const STORAGE_BUCKETS = {
   IR_REPORTS: "ir-reports",
+  IR_IMAGES: "ir-images",
 } as const;
 
 // Database table names

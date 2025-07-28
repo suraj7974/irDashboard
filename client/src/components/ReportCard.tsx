@@ -4,6 +4,8 @@ import { FileText, Download, Eye, Calendar, Clock, AlertTriangle, Users, Buildin
 import { format } from "date-fns";
 import { IRReport } from "../types";
 import { IRReportAPI } from "../api/reports";
+import ImageUpload from "./ImageUpload";
+import AdditionalImages from "./AdditionalImages";
 
 interface ReportCardProps {
   report: IRReport;
@@ -16,6 +18,8 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
   const [editingField, setEditingField] = useState<string | null>(null);
   const [savingField, setSavingField] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [uploadingProfileImage, setUploadingProfileImage] = useState(false);
+  const [uploadingAdditionalImage, setUploadingAdditionalImage] = useState(false);
   const [fieldValues, setFieldValues] = useState({
     police_station: report.police_station || "",
     division: report.division || "",
@@ -37,11 +41,7 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
   };
 
   const validateUidForName = (value: string): string | null => {
-    if (!value || !value.trim()) return null; // Empty values are allowed
-    const numbersOnlyRegex = /^[0-9]+$/;
-    if (!numbersOnlyRegex.test(value)) {
-      return "UID for Name must contain only numbers";
-    }
+    // UID for Name can now contain any characters - no validation needed
     return null;
   };
 
@@ -91,6 +91,58 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
     }));
     setEditingField(null);
     setValidationError(null);
+  };
+
+  // Image upload handlers
+  const handleProfileImageUpload = async (file: File) => {
+    try {
+      setUploadingProfileImage(true);
+      const imageUrl = await IRReportAPI.uploadProfileImage(report.id, file);
+      if (onReportUpdate) {
+        const updatedReport = await IRReportAPI.getReport(report.id);
+        if (updatedReport) {
+          onReportUpdate(updatedReport);
+        }
+      }
+    } catch (error) {
+      console.error("Profile image upload failed:", error);
+      throw error;
+    } finally {
+      setUploadingProfileImage(false);
+    }
+  };
+
+  const handleAdditionalImageUpload = async (file: File) => {
+    try {
+      setUploadingAdditionalImage(true);
+      const imageUrl = await IRReportAPI.uploadAdditionalImage(report.id, file);
+      if (onReportUpdate) {
+        const updatedReport = await IRReportAPI.getReport(report.id);
+        if (updatedReport) {
+          onReportUpdate(updatedReport);
+        }
+      }
+    } catch (error) {
+      console.error("Additional image upload failed:", error);
+      throw error;
+    } finally {
+      setUploadingAdditionalImage(false);
+    }
+  };
+
+  const handleAdditionalImageDelete = async (imageUrl: string) => {
+    try {
+      await IRReportAPI.deleteImage(report.id, imageUrl, false);
+      if (onReportUpdate) {
+        const updatedReport = await IRReportAPI.getReport(report.id);
+        if (updatedReport) {
+          onReportUpdate(updatedReport);
+        }
+      }
+    } catch (error) {
+      console.error("Additional image deletion failed:", error);
+      throw error;
+    }
   };
 
   // Each field can be edited if it's empty (not set yet)
@@ -271,6 +323,17 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
               </div>
             </div>
           </div>
+
+          {/* Profile Image Upload */}
+          <div className="flex-shrink-0">
+            <ImageUpload
+              type="profile"
+              size="lg"
+              currentImageUrl={report.profile_image_url}
+              onImageUpload={handleProfileImageUpload}
+              isUploading={uploadingProfileImage}
+            />
+          </div>
         </div>
       </div>
 
@@ -291,7 +354,7 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
                 {renderField("police_station", "Police Station", <Building2 className="h-4 w-4 text-blue-600" />, "Enter police station (text only)")}
                 {renderField("division", "Division", <MapPin className="h-4 w-4 text-blue-600" />, "Enter division")}
                 {renderField("area_committee", "Area Committee", <Users className="h-4 w-4 text-blue-600" />, "Enter area committee")}
-                {renderField("uid_for_name", "UID for Name", <Hash className="h-4 w-4 text-blue-600" />, "Enter unique ID (numbers only)")}
+                {renderField("uid_for_name", "UID for Name", <Hash className="h-4 w-4 text-blue-600" />, "Enter unique identifier")}
                 {renderField("rank", "Rank", <Award className="h-4 w-4 text-blue-600" />, "Select rank", true)}
               </div>
 
@@ -319,21 +382,28 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
             <Download className="h-4 w-4" />
             <span>Download</span>
           </button>
+          <ImageUpload type="additional" onImageUpload={handleAdditionalImageUpload} isUploading={uploadingAdditionalImage} />
+          {/* Additional Images View Button */}
+          {report.additional_images && report.additional_images.length > 0 && (
+            <AdditionalImages images={report.additional_images} onImageDelete={handleAdditionalImageDelete} />
+          )}
         </div>
 
-        {report.status === "processing" && (
-          <div className="flex items-center space-x-2 text-amber-600">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600"></div>
-            <span className="text-sm">Processing...</span>
-          </div>
-        )}
+        <div className="flex items-center space-x-4">
+          {report.status === "processing" && (
+            <div className="flex items-center space-x-2 text-amber-600">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600"></div>
+              <span className="text-sm">Processing...</span>
+            </div>
+          )}
 
-        {report.status === "error" && (
-          <div className="flex items-center space-x-2 text-red-600">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm">Processing Error</span>
-          </div>
-        )}
+          {report.status === "error" && (
+            <div className="flex items-center space-x-2 text-red-600">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm">Processing Error</span>
+            </div>
+          )}
+        </div>
       </div>
     </motion.div>
   );

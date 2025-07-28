@@ -17,6 +17,9 @@ export interface IRReport {
   uid_for_name?: string;
   rank?: string;
   manual_details_set?: boolean;
+  // Image fields
+  profile_image_url?: string;
+  additional_images?: string[];
 }
 
 export interface IRReportMetadata {

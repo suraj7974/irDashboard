@@ -50,6 +50,90 @@ export class IRReportAPI {
     return data;
   }
 
+  // Upload profile image to S3 (ir-images bucket)
+  static async uploadProfileImage(reportId: string, imageFile: File): Promise<string> {
+    const fileExtension = imageFile.name.split(".").pop() || "jpg";
+    const fileName = `${reportId}/profile.${fileExtension}`;
+
+    const { data, error } = await supabase.storage.from(STORAGE_BUCKETS.IR_IMAGES).upload(fileName, imageFile, {
+      cacheControl: "3600",
+      upsert: true, // Allow overwriting existing profile image
+    });
+
+    if (error) {
+      throw new Error(`Profile image upload failed: ${error.message}`);
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from(STORAGE_BUCKETS.IR_IMAGES).getPublicUrl(fileName);
+
+    // Update the report with the profile image URL
+    await this.updateReport(reportId, { profile_image_url: publicUrl });
+
+    return publicUrl;
+  }
+
+  // Upload additional image to S3 (ir-images bucket)
+  static async uploadAdditionalImage(reportId: string, imageFile: File): Promise<string> {
+    const fileExtension = imageFile.name.split(".").pop() || "jpg";
+    const timestamp = Date.now();
+    const fileName = `${reportId}/additional_${timestamp}.${fileExtension}`;
+
+    const { data, error } = await supabase.storage.from(STORAGE_BUCKETS.IR_IMAGES).upload(fileName, imageFile, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+
+    if (error) {
+      throw new Error(`Additional image upload failed: ${error.message}`);
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from(STORAGE_BUCKETS.IR_IMAGES).getPublicUrl(fileName);
+
+    // Get current report to update additional images array
+    const report = await this.getReport(reportId);
+    if (!report) {
+      throw new Error("Report not found");
+    }
+
+    const currentAdditionalImages = report.additional_images || [];
+    const updatedAdditionalImages = [...currentAdditionalImages, publicUrl];
+
+    // Update the report with the new additional images array
+    await this.updateReport(reportId, { additional_images: updatedAdditionalImages });
+
+    return publicUrl;
+  }
+
+  // Delete image from S3 and update report
+  static async deleteImage(reportId: string, imageUrl: string, isProfileImage: boolean = false): Promise<void> {
+    // Extract file path from URL
+    const urlParts = imageUrl.split("/");
+    const fileName = urlParts[urlParts.length - 1];
+    const filePath = `${reportId}/${fileName}`;
+
+    const { error } = await supabase.storage.from(STORAGE_BUCKETS.IR_IMAGES).remove([filePath]);
+
+    if (error) {
+      console.warn("Image deletion from storage failed:", error.message);
+    }
+
+    // Update the report to remove the image URL
+    const report = await this.getReport(reportId);
+    if (!report) return;
+
+    if (isProfileImage) {
+      await this.updateReport(reportId, { profile_image_url: undefined });
+    } else {
+      const currentAdditionalImages = report.additional_images || [];
+      const updatedAdditionalImages = currentAdditionalImages.filter((url) => url !== imageUrl);
+      await this.updateReport(reportId, { additional_images: updatedAdditionalImages });
+    }
+  }
+
   // Validation functions
   private static validatePoliceStation(value: string): string | null {
     if (!value || !value.trim()) return null; // Empty values are allowed
@@ -61,11 +145,7 @@ export class IRReportAPI {
   }
 
   private static validateUidForName(value: string): string | null {
-    if (!value || !value.trim()) return null; // Empty values are allowed
-    const numbersOnlyRegex = /^[0-9]+$/;
-    if (!numbersOnlyRegex.test(value)) {
-      return "UID for Name must contain only numbers";
-    }
+    // UID for Name can now contain any characters - no validation needed
     return null;
   }
 
@@ -105,9 +185,7 @@ export class IRReportAPI {
       if (error.code === "23514" && error.message.includes("check_police_station_text_only")) {
         throw new Error("Police station must contain only letters, spaces, hyphens, and periods");
       }
-      if (error.code === "23514" && error.message.includes("check_uid_for_name_numbers_only")) {
-        throw new Error("UID for Name must contain only numbers");
-      }
+      // UID for Name constraint removed - no longer needed
 
       throw new Error(`Manual details update failed: ${error.message}`);
     }
