@@ -13,7 +13,7 @@ interface ReportDetailModalProps {
 
 export default function ReportDetailModal({ report, isOpen, onClose, onDownload }: ReportDetailModalProps) {
   const [imageError, setImageError] = useState(false);
-  
+
   if (!isOpen) return null;
 
   const { metadata } = report;
