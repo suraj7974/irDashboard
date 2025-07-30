@@ -168,6 +168,56 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                   </div>
                 </div>
 
+                {/* Manual Fields - Read Only */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Administrative Information</h3>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="flex items-start space-x-3">
+                        <Shield className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Police Station</p>
+                          <p className="text-sm text-gray-600">{report.police_station || "Not specified"}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Division</p>
+                          <p className="text-sm text-gray-600">{report.division || "Not specified"}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <Users className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Area Committee</p>
+                          <p className="text-sm text-gray-600">{report.area_committee || "Not specified"}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-start space-x-3">
+                        <User className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">UID for Name</p>
+                          <p className="text-sm text-gray-600">{report.uid_for_name || "Not specified"}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <Shield className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Rank</p>
+                          <p className="text-sm text-gray-600">{report.rank || "Not specified"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* All Available Data */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">All Available Information</h3>
@@ -217,14 +267,6 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                     </div>
                   </div>
                 </div>
-
-                {/* Summary */}
-                {report.summary && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Summary</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-lg">{report.summary}</p>
-                  </div>
-                )}
 
                 {/* Aliases */}
                 {(getData("aliases", "Aliases") || getData("aliases", "उपनाम")) && (

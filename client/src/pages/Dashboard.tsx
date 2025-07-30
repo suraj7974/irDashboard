@@ -1,20 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Upload, Search, BarChart3, Users, Clock, AlertTriangle } from "lucide-react";
-import FileUpload from "../components/FileUpload";
+import { FileText, Search, BarChart3, Users, Clock, AlertTriangle } from "lucide-react";
 import SearchBar from "../components/SearchBar";
 import ReportCard from "../components/ReportCard";
 import ReportDetailModal from "../components/ReportDetailModal";
-import { IRReport, SearchFilters, UploadProgress } from "../types";
+import { IRReport, SearchFilters } from "../types";
 import { IRReportAPI } from "../api/reports";
-import { ParserService } from "../services/parser";
 
 export default function Dashboard() {
   const [reports, setReports] = useState<IRReport[]>([]);
   const [filteredReports, setFilteredReports] = useState<IRReport[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
   const [selectedReport, setSelectedReport] = useState<IRReport | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -101,113 +97,6 @@ export default function Dashboard() {
     setFilteredReports(filtered);
   };
 
-  const handleFileUpload = async (files: File[]) => {
-    setUploading(true);
-    const newProgress: UploadProgress[] = files.map((file) => ({
-      file,
-      progress: 0,
-      status: "uploading",
-    }));
-    setUploadProgress(newProgress);
-
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        // Update progress for upload start
-        setUploadProgress((prev) => prev.map((p, idx) => (idx === i ? { ...p, progress: 10 } : p)));
-
-        // Upload file to Supabase
-        const { id, file_url } = await IRReportAPI.uploadFile(file);
-
-        // Update progress for upload complete
-        setUploadProgress((prev) => prev.map((p, idx) => (idx === i ? { ...p, progress: 30, id } : p)));
-
-        // Create initial report record
-        const reportData = {
-          id,
-          filename: `${id}/original.pdf`,
-          original_filename: file.name,
-          uploaded_at: new Date().toISOString(),
-          status: "processing" as const,
-          file_size: file.size,
-          file_url,
-        };
-
-        const report = await IRReportAPI.createReport(reportData);
-
-        // Update progress for processing start
-        setUploadProgress((prev) => prev.map((p, idx) => (idx === i ? { ...p, progress: 50, status: "processing" } : p)));
-
-        try {
-          // Process with parser
-          const metadata = await ParserService.processPDF(file);
-          console.log("Processed metadata:", metadata);
-          const summary = ParserService.generateSummary(metadata);
-          console.log("Generated summary:", summary);
-
-          // Update report with results (no JSON upload needed)
-          const updateData = {
-            status: "completed" as const,
-            metadata,
-            summary,
-          };
-          console.log("Update data being sent:", updateData);
-
-          const updatedReport = await IRReportAPI.updateReport(id, updateData);
-          console.log("Updated report received:", updatedReport);
-
-          // Update progress for completion
-          setUploadProgress((prev) => prev.map((p, idx) => (idx === i ? { ...p, progress: 100, status: "completed" } : p)));
-
-          // Add to reports list
-          setReports((prev) => [updatedReport, ...prev]);
-        } catch (processingError) {
-          console.error("Processing error:", processingError);
-
-          // Update report with error
-          await IRReportAPI.updateReport(id, {
-            status: "error",
-            error_message: processingError instanceof Error ? processingError.message : "Processing failed",
-          });
-
-          // Update progress for error
-          setUploadProgress((prev) =>
-            prev.map((p, idx) =>
-              idx === i
-                ? {
-                    ...p,
-                    progress: 100,
-                    status: "error",
-                    error: processingError instanceof Error ? processingError.message : "Processing failed",
-                  }
-                : p
-            )
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-      // Handle upload errors
-      setUploadProgress((prev) =>
-        prev.map((p) => ({
-          ...p,
-          status: "error",
-          error: error instanceof Error ? error.message : "Upload failed",
-        }))
-      );
-    } finally {
-      setUploading(false);
-      loadStats(); // Refresh stats
-      loadReports(); // Refresh reports list
-
-      // Clear progress after 5 seconds
-      setTimeout(() => {
-        setUploadProgress([]);
-      }, 5000);
-    }
-  };
-
   const handleViewDetails = (report: IRReport) => {
     setSelectedReport(report);
     setShowDetailModal(true);
@@ -244,13 +133,8 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Upload Section */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <FileUpload onUpload={handleFileUpload} uploading={uploading} uploadProgress={uploadProgress} />
-        </motion.div>
-
         {/* Search Section */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <SearchBar
             filters={searchFilters}
             onFiltersChange={setSearchFilters}

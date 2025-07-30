@@ -10,6 +10,12 @@ export interface IRReport {
   summary?: string;
   error_message?: string;
   metadata?: IRReportMetadata;
+  // Manual fields (read-only in host branch)
+  police_station?: string;
+  division?: string;
+  area_committee?: string;
+  uid_for_name?: string;
+  rank?: string;
 }
 
 export interface IRReportMetadata {
@@ -64,12 +70,4 @@ export interface SearchFilters {
     end: Date;
   };
   keywords?: string[];
-}
-
-export interface UploadProgress {
-  file: File;
-  progress: number;
-  status: "uploading" | "processing" | "completed" | "error";
-  id?: string;
-  error?: string;
 }
