@@ -10,6 +10,7 @@ export interface IRReport {
   summary?: string;
   error_message?: string;
   metadata?: IRReportMetadata;
+  profile_image_url?: string;
   // Manual fields (read-only in host branch)
   police_station?: string;
   division?: string;

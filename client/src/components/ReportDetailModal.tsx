@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, Users } from "lucide-react";
 import { format } from "date-fns";
@@ -12,6 +12,8 @@ interface ReportDetailModalProps {
 }
 
 export default function ReportDetailModal({ report, isOpen, onClose, onDownload }: ReportDetailModalProps) {
+  const [imageError, setImageError] = useState(false);
+  
   if (!isOpen) return null;
 
   const { metadata } = report;
@@ -51,8 +53,20 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-primary-50 rounded-lg">
-              <FileText className="h-6 w-6 text-primary-600" />
+            {/* Profile Image or Default Icon */}
+            <div className="flex-shrink-0">
+              {report.profile_image_url && !imageError ? (
+                <img
+                  src={report.profile_image_url}
+                  alt={getData("name", "Name") || "Profile"}
+                  className="h-12 w-12 rounded-full object-cover border-2 border-gray-200"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <div className="p-2 bg-primary-50 rounded-lg">
+                  <User className="h-8 w-8 text-primary-600" />
+                </div>
+              )}
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">{getData("name", "Name") || "Unknown Subject"}</h2>
