@@ -399,7 +399,6 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
               className=""
             >
               <div className="bg-gray-50 border border-gray-200 rounded-lg mt-2 p-4">
-                <h4 className="text-sm font-medium text-gray-900 mb-3">Administrative Filters</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Police Station Filter */}
                   <div className="relative">
@@ -592,7 +591,7 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
                     }}
                     className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors"
                   >
-                    Clear Administrative Filters
+                    Clear Filters
                   </button>
                 </div>
               </div>
