@@ -74,6 +74,11 @@ export interface SearchFilters {
     end: Date;
   };
   keywords?: string[];
+  // Manual field filters
+  police_station?: string;
+  division?: string;
+  area_committee?: string;
+  rank?: string;
 }
 
 export interface UploadProgress {

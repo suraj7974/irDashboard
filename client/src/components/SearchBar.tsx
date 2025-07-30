@@ -25,6 +25,19 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Filter input states
+  const [policeStationQuery, setPoliceStationQuery] = useState(filters.police_station || "");
+  const [divisionQuery, setDivisionQuery] = useState(filters.division || "");
+  const [areaCommitteeQuery, setAreaCommitteeQuery] = useState(filters.area_committee || "");
+
+  // Filter suggestions states
+  const [policeStationSuggestions, setPoliceStationSuggestions] = useState<string[]>([]);
+  const [divisionSuggestions, setDivisionSuggestions] = useState<string[]>([]);
+  const [areaCommitteeSuggestions, setAreaCommitteeSuggestions] = useState<string[]>([]);
+
+  // Active suggestion states
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+
   // Generate suggestions based on reports data and current query
   const generateSuggestions = (searchQuery: string): SearchSuggestion[] => {
     if (!searchQuery || searchQuery.length < 1) return [];
@@ -155,12 +168,76 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
       .slice(0, 10); // Limit to 10 suggestions
   };
 
+  // Generate filter suggestions for specific fields
+  const generateFilterSuggestions = (field: keyof IRReport, searchQuery: string): string[] => {
+    if (!searchQuery || searchQuery.length < 1) return [];
+
+    const queryLower = searchQuery.toLowerCase();
+    const values = Array.from(new Set(reports.map((report) => report[field] as string).filter((value) => value && value.toLowerCase().includes(queryLower))));
+
+    return values
+      .sort((a, b) => {
+        // Exact matches first
+        const aExact = a.toLowerCase() === queryLower;
+        const bExact = b.toLowerCase() === queryLower;
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+
+        // Then starts with query
+        const aStarts = a.toLowerCase().startsWith(queryLower);
+        const bStarts = b.toLowerCase().startsWith(queryLower);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+
+        // Then alphabetically
+        return a.localeCompare(b);
+      })
+      .slice(0, 8); // Limit to 8 suggestions per field
+  };
+
+  // Handle filter input changes
+  const handleFilterChange = (field: string, value: string) => {
+    switch (field) {
+      case "police_station":
+        setPoliceStationQuery(value);
+        setPoliceStationSuggestions(generateFilterSuggestions("police_station", value));
+        setActiveFilter(value ? "police_station" : null);
+        onFiltersChange({ ...filters, police_station: value || undefined });
+        break;
+      case "division":
+        setDivisionQuery(value);
+        setDivisionSuggestions(generateFilterSuggestions("division", value));
+        setActiveFilter(value ? "division" : null);
+        onFiltersChange({ ...filters, division: value || undefined });
+        break;
+      case "area_committee":
+        setAreaCommitteeQuery(value);
+        setAreaCommitteeSuggestions(generateFilterSuggestions("area_committee", value));
+        setActiveFilter(value ? "area_committee" : null);
+        onFiltersChange({ ...filters, area_committee: value || undefined });
+        break;
+    }
+  };
+
+  // Handle filter suggestion selection
+  const handleFilterSuggestionSelect = (field: string, value: string) => {
+    handleFilterChange(field, value);
+    setActiveFilter(null);
+  };
+
   // Update suggestions when query changes
   useEffect(() => {
     const newSuggestions = generateSuggestions(query);
     setSuggestions(newSuggestions);
     setSelectedIndex(-1);
   }, [query, reports]);
+
+  // Sync filter inputs with filters prop
+  useEffect(() => {
+    setPoliceStationQuery(filters.police_station || "");
+    setDivisionQuery(filters.division || "");
+    setAreaCommitteeQuery(filters.area_committee || "");
+  }, [filters.police_station, filters.division, filters.area_committee]);
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
@@ -206,6 +283,10 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
 
   const clearFilters = () => {
     setQuery("");
+    setPoliceStationQuery("");
+    setDivisionQuery("");
+    setAreaCommitteeQuery("");
+    setActiveFilter(null);
     onFiltersChange({});
     onSearch("");
     setShowSuggestions(false);
@@ -255,7 +336,17 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
     }
   };
 
-  const activeFiltersCount = Object.values(filters).filter(Boolean).length;
+  // Count active filters (excluding query as it's shown separately)
+  const activeFiltersCount = [
+    filters.suspectName,
+    filters.location,
+    filters.dateRange,
+    filters.keywords && filters.keywords.length > 0,
+    policeStationQuery,
+    divisionQuery,
+    areaCommitteeQuery,
+    filters.rank,
+  ].filter(Boolean).length;
 
   return (
     <div className="w-full max-w-4xl mx-auto mb-8">
@@ -298,6 +389,217 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
           </div>
         </div>
 
+        {/* Administrative Filters Panel */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, y: -10, height: 0 }}
+              className=""
+            >
+              <div className="bg-gray-50 border border-gray-200 rounded-lg mt-2 p-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-3">Administrative Filters</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Police Station Filter */}
+                  <div className="relative">
+                    <label htmlFor="police-station" className="block text-xs font-medium text-gray-700 mb-1">
+                      Police Station
+                    </label>
+                    <input
+                      id="police-station"
+                      type="text"
+                      value={policeStationQuery}
+                      onChange={(e) => handleFilterChange("police_station", e.target.value)}
+                      onFocus={() => {
+                        const suggestions = generateFilterSuggestions("police_station", policeStationQuery || "");
+                        setPoliceStationSuggestions(
+                          suggestions.length > 0
+                            ? suggestions
+                            : Array.from(new Set(reports.filter((r) => r.police_station).map((r) => r.police_station!)))
+                                .sort()
+                                .slice(0, 8)
+                        );
+                        setActiveFilter("police_station");
+                      }}
+                      onBlur={() =>
+                        setTimeout(() => {
+                          if (activeFilter === "police_station") setActiveFilter(null);
+                        }, 500)
+                      }
+                      placeholder="Type to search..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    {activeFilter === "police_station" && policeStationSuggestions.length > 0 && (
+                      <div
+                        className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-[9999] mt-1 max-h-40 overflow-y-auto"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onMouseEnter={() => {
+                          // Clear any pending blur timeout when mouse enters dropdown
+                        }}
+                      >
+                        {policeStationSuggestions.map((suggestion, index) => (
+                          <button
+                            key={suggestion}
+                            onClick={() => handleFilterSuggestionSelect("police_station", suggestion)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors border-l-2 border-transparent hover:border-blue-500"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Division Filter */}
+                  <div className="relative">
+                    <label htmlFor="division" className="block text-xs font-medium text-gray-700 mb-1">
+                      Division
+                    </label>
+                    <input
+                      id="division"
+                      type="text"
+                      value={divisionQuery}
+                      onChange={(e) => handleFilterChange("division", e.target.value)}
+                      onFocus={() => {
+                        const suggestions = generateFilterSuggestions("division", divisionQuery || "");
+                        setDivisionSuggestions(
+                          suggestions.length > 0
+                            ? suggestions
+                            : Array.from(new Set(reports.filter((r) => r.division).map((r) => r.division!)))
+                                .sort()
+                                .slice(0, 8)
+                        );
+                        setActiveFilter("division");
+                      }}
+                      onBlur={() =>
+                        setTimeout(() => {
+                          if (activeFilter === "division") setActiveFilter(null);
+                        }, 500)
+                      }
+                      placeholder="Type to search..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    {activeFilter === "division" && divisionSuggestions.length > 0 && (
+                      <div
+                        className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-[9999] mt-1 max-h-40 overflow-y-auto"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onMouseEnter={() => {
+                          // Clear any pending blur timeout when mouse enters dropdown
+                        }}
+                      >
+                        {divisionSuggestions.map((suggestion, index) => (
+                          <button
+                            key={suggestion}
+                            onClick={() => handleFilterSuggestionSelect("division", suggestion)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors border-l-2 border-transparent hover:border-blue-500"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Area Committee Filter */}
+                  <div className="relative">
+                    <label htmlFor="area-committee" className="block text-xs font-medium text-gray-700 mb-1">
+                      Area Committee
+                    </label>
+                    <input
+                      id="area-committee"
+                      type="text"
+                      value={areaCommitteeQuery}
+                      onChange={(e) => handleFilterChange("area_committee", e.target.value)}
+                      onFocus={() => {
+                        const suggestions = generateFilterSuggestions("area_committee", areaCommitteeQuery || "");
+                        setAreaCommitteeSuggestions(
+                          suggestions.length > 0
+                            ? suggestions
+                            : Array.from(new Set(reports.filter((r) => r.area_committee).map((r) => r.area_committee!)))
+                                .sort()
+                                .slice(0, 8)
+                        );
+                        setActiveFilter("area_committee");
+                      }}
+                      onBlur={() =>
+                        setTimeout(() => {
+                          if (activeFilter === "area_committee") setActiveFilter(null);
+                        }, 500)
+                      }
+                      placeholder="Type to search..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    {activeFilter === "area_committee" && areaCommitteeSuggestions.length > 0 && (
+                      <div
+                        className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-[9999] mt-1 max-h-40 overflow-y-auto"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onMouseEnter={() => {
+                          // Clear any pending blur timeout when mouse enters dropdown
+                        }}
+                      >
+                        {areaCommitteeSuggestions.map((suggestion, index) => (
+                          <button
+                            key={suggestion}
+                            onClick={() => handleFilterSuggestionSelect("area_committee", suggestion)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors border-l-2 border-transparent hover:border-blue-500"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Rank Filter */}
+                  <div>
+                    <label htmlFor="rank" className="block text-xs font-medium text-gray-700 mb-1">
+                      Rank
+                    </label>
+                    <select
+                      id="rank"
+                      value={filters.rank || ""}
+                      onChange={(e) => onFiltersChange({ ...filters, rank: e.target.value || undefined })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="">All Ranks</option>
+                      {Array.from(new Set(reports.filter((r) => r.rank).map((r) => r.rank!)))
+                        .sort()
+                        .map((rank) => (
+                          <option key={rank} value={rank}>
+                            {rank}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Clear Filters Button */}
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setPoliceStationQuery("");
+                      setDivisionQuery("");
+                      setAreaCommitteeQuery("");
+                      setActiveFilter(null);
+                      onFiltersChange({
+                        ...filters,
+                        police_station: undefined,
+                        division: undefined,
+                        area_committee: undefined,
+                        rank: undefined,
+                      });
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors"
+                  >
+                    Clear Administrative Filters
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Enhanced Suggestions Dropdown */}
         <AnimatePresence>
           {showSuggestions && suggestions.length > 0 && (
@@ -305,7 +607,7 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 mt-1 max-h-80 overflow-y-auto"
+              className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] mt-1 max-h-80 overflow-y-auto"
             >
               <div className="py-2">
                 {suggestions.map((suggestion, index) => (
@@ -338,7 +640,7 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 mt-1"
+              className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] mt-1"
             >
               <div className="py-4 px-4 text-center text-gray-500">
                 <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
