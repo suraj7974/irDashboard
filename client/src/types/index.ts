@@ -70,4 +70,8 @@ export interface SearchFilters {
     end: Date;
   };
   keywords?: string[];
+  police_station?: string;
+  division?: string;
+  area_committee?: string;
+  rank?: string;
 }

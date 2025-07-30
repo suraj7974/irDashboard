@@ -94,6 +94,23 @@ export default function Dashboard() {
       filtered = filtered.filter((report) => new Date(report.uploaded_at) <= searchFilters.dateRange!.end);
     }
 
+    // Manual field filters
+    if (searchFilters.police_station) {
+      filtered = filtered.filter((report) => report.police_station === searchFilters.police_station);
+    }
+
+    if (searchFilters.division) {
+      filtered = filtered.filter((report) => report.division === searchFilters.division);
+    }
+
+    if (searchFilters.area_committee) {
+      filtered = filtered.filter((report) => report.area_committee === searchFilters.area_committee);
+    }
+
+    if (searchFilters.rank) {
+      filtered = filtered.filter((report) => report.rank === searchFilters.rank);
+    }
+
     setFilteredReports(filtered);
   };
 
