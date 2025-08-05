@@ -1,15 +1,14 @@
-from openai import OpenAI
+from groq_client import GroqClient
 import os
 from pdf2image import convert_from_path
 import pytesseract
 import json
-import tiktoken
 from collections import Counter
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+groq_client = GroqClient()
 
 OUTPUT_FOLDER = "./summaries/"
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
@@ -28,74 +27,40 @@ def extract_text_from_pdf(pdf_path):
     return full_text
 
 
-def count_tokens(text, model="gpt-4o"):
-    """Count tokens in text using cl100k_base encoding (used by GPT-4)"""
-    try:
-        encoding = tiktoken.get_encoding("cl100k_base")  # GPT-4 encoding
-        return len(encoding.encode(text))
-    except Exception as e:
-        print(f"⚠️ Token counting failed: {e}, using character approximation")
-        # Fallback: rough approximation (1 token ≈ 4 characters)
-        return len(text) // 4
+def count_tokens(text, model="llama-3.1-70b-versatile"):
+    """Count tokens in text using rough estimation (1 token ≈ 4 characters)"""
+    return groq_client.count_tokens_estimate(text)
 
 
-def split_text_to_chunks(text, max_tokens=8000):
+def split_text_to_chunks(text, max_tokens=None):  # Make adaptive
     """Split text into chunks that fit within token limits"""
-    try:
-        encoding = tiktoken.get_encoding("cl100k_base")  # GPT-4 encoding
-    except Exception as e:
-        print(f"⚠️ Tiktoken encoding failed: {e}, using character-based chunking")
-        # Fallback to character-based chunking
-        max_chars = max_tokens * 4  # Rough approximation
-        chunks = []
-        lines = text.split("\n")
-        current_chunk = []
-        current_chars = 0
+    # Use adaptive chunking based on current model
+    if max_tokens is None:
+        return groq_client.split_text_adaptive(text, safety_margin=0.6)
 
-        for line in lines:
-            line_chars = len(line)
-            if current_chars + line_chars > max_chars and current_chunk:
-                chunks.append("\n".join(current_chunk))
-                current_chunk = [line]
-                current_chars = line_chars
-            else:
-                current_chunk.append(line)
-                current_chars += line_chars
-
-        if current_chunk:
-            chunks.append("\n".join(current_chunk))
-
-        print(f"📝 Split text into {len(chunks)} chunks (character-based)")
-        return chunks
-
-    # Token-based chunking (preferred)
-    tokens = encoding.encode(text)
+    # Legacy fixed-size chunking if max_tokens specified
+    # Use Groq client's token estimation
+    # Fallback to character-based chunking since tiktoken isn't available
+    max_chars = max_tokens * 4  # Rough approximation
     chunks = []
-    current_chunk = []
-    current_tokens = 0
-
-    # Split by lines to maintain context
     lines = text.split("\n")
+    current_chunk = []
+    current_chars = 0
 
     for line in lines:
-        line_tokens = len(encoding.encode(line))
-
-        if current_tokens + line_tokens > max_tokens and current_chunk:
-            # Save current chunk and start new one
-            chunk_text = "\n".join(current_chunk)
-            chunks.append(chunk_text)
+        line_chars = len(line)
+        if current_chars + line_chars > max_chars and current_chunk:
+            chunks.append("\n".join(current_chunk))
             current_chunk = [line]
-            current_tokens = line_tokens
+            current_chars = line_chars
         else:
             current_chunk.append(line)
-            current_tokens += line_tokens
+            current_chars += line_chars
 
-    # Add the last chunk
     if current_chunk:
-        chunk_text = "\n".join(current_chunk)
-        chunks.append(chunk_text)
+        chunks.append("\n".join(current_chunk))
 
-    print(f"📝 Split text into {len(chunks)} chunks (token-based)")
+    print(f"📝 Split text into {len(chunks)} chunks (fixed-size)")
     return chunks
 
 
@@ -160,8 +125,7 @@ Report Text:
 """
 
     try:
-        completion = client.chat.completions.create(
-            model="gpt-4o",
+        completion = groq_client.chat_completion(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
         )
@@ -304,15 +268,22 @@ def get_structured_summary(text):
     token_count = count_tokens(text)
     print(f"📊 Text has {token_count} tokens")
 
-    if token_count <= 30000:  # Process directly if small enough
+    # Get optimal processing size for current model
+    optimal_size = groq_client.get_optimal_chunk_size(
+        safety_margin=0.8
+    )  # 80% for direct processing
+
+    if token_count <= optimal_size:  # Process directly if within optimal size
         print("📝 Processing text directly (no chunking needed)")
         chunk_summary = get_chunk_summary(text, 0)
         if chunk_summary:
             return json.dumps(chunk_summary, ensure_ascii=False, indent=2)
 
-    # Text is too long, use chunking
-    print("📝 Text too long, using chunked processing")
-    chunks = split_text_to_chunks(text, max_tokens=8000)
+    # Text is too long, use adaptive chunking
+    print("📝 Text too long, using adaptive chunking")
+    chunks = groq_client.split_text_adaptive(
+        text, safety_margin=0.6
+    )  # 60% for chunked processing
     all_summaries = []
 
     for idx, chunk in enumerate(chunks):

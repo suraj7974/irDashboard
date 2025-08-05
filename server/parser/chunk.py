@@ -1,16 +1,15 @@
-from openai import OpenAI
+from groq_client import GroqClient
 import pytesseract
 from pdf2image import convert_from_path
 import os
 import json
-import tiktoken
 import re
 from collections import Counter
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+groq_client = GroqClient()
 
 OUTPUT_FOLDER = "./summaries/"
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
@@ -29,12 +28,18 @@ def extract_text_from_pdf(pdf_path):
     return full_text
 
 
-def count_tokens(text, model="gpt-4o"):
-    encoding = tiktoken.encoding_for_model(model)
-    return len(encoding.encode(text))
+def count_tokens(text, model="llama-3.1-70b-versatile"):
+    """Count tokens in text using rough estimation"""
+    return groq_client.count_tokens_estimate(text)
 
 
-def split_text_to_chunks(text, max_tokens=8000):
+def split_text_to_chunks(text, max_tokens=None):  # Make max_tokens optional
+    """Split text into chunks using adaptive sizing"""
+    # If max_tokens not specified, use adaptive chunking
+    if max_tokens is None:
+        return groq_client.split_text_adaptive(text, safety_margin=0.6)
+
+    # Legacy character-based chunking for specific max_tokens
     words = text.split()
     chunks = []
     current_chunk = []
@@ -91,8 +96,8 @@ Report Text:
 {text_chunk}
 """
 
-    completion = client.chat.completions.create(
-        model="gpt-4o", messages=[{"role": "user", "content": prompt}], temperature=0.2
+    completion = groq_client.chat_completion(
+        messages=[{"role": "user", "content": prompt}], temperature=0.2
     )
     summary = completion.choices[0].message.content
     print(f"\nGPT Response for Chunk {idx+1}:\n{summary}\n")
