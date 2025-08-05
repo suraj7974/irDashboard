@@ -44,3 +44,11 @@ server/.do/
 # Python cache
 *.pyc
 .pytest_cache/
+
+upload_script/__pycache__/
+upload_script/.pytest_cache/
+upload_script/pdfs/
+
+server/uploaded_reports/
+server/summaries/
+server/parser/__pycache__/
