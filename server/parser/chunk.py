@@ -133,10 +133,17 @@ def clean_gpt_response(raw_response):
 
 
 def get_summary_chunk(text_chunk, idx):
-    prompt = (
-        prompt
-    ) = f"""
-Analyze this Hindi Maoist report chunk and return structured JSON in this exact format:
+    prompt = f"""
+You are an expert analyst specializing in parsing police reports related to Maoist surrenders and activities.
+
+CRITICAL INSTRUCTIONS:
+- You MUST respond ONLY in valid JSON format
+- Do NOT include any commentary, explanations, or text outside the JSON
+- You can respond in Hindi or English - whatever feels natural for the content
+- For names and places, use the original script (Devanagari/Hindi is preferred for Hindi names)
+- Ensure JSON structure is valid regardless of language used in values
+
+Analyze this Maoist report chunk and return structured JSON in this exact format:
 {{
   "Name": "",
   "Aliases": [],
@@ -146,6 +153,10 @@ Analyze this Hindi Maoist report chunk and return structured JSON in this exact 
   "History": "",
   "Bounty": "",
   "Villages Covered": [{{"Village": "", "District": ""}}],
+  "Supply Team/Supply": "",
+  "IED/Bomb": "",
+  "Meeting": "",
+  "Platoon": "",
   "Criminal Activities": [],
   "Maoist Hierarchical Role Changes": [],
   "Police Encounters Participated": [],
@@ -155,10 +166,18 @@ Analyze this Hindi Maoist report chunk and return structured JSON in this exact 
   "All Maoists Met": [{{"Name": "", "Designation": "", "Date Met": ""}}]
 }}
 
-→ For each village, include the associated district if mentioned or 'Unknown'.
-→ For 'All Maoists Met', give the name, designation (if known), and approximate date met (if known), otherwise leave date blank or 'Unknown'.
-→ Strictly respond in JSON format only.
-→ Fill every field fully. No fields should be left out.
+RULES:
+- Fill every field without skipping. Use 'Unknown' या 'अज्ञात' where no information is found.
+- For names with 'urf' (like "Suraj urf Don"), put the main name in "Name" field and the alias in "Aliases" array.
+- For each village, include the associated district if mentioned or 'Unknown'/'अज्ञात'.
+- For 'All Maoists Met', give the name, designation (if known), and approximate date met (if known), otherwise leave date blank or 'Unknown'/'अज्ञात'.
+- 'Supply Team/Supply' should include any information about supply operations, logistics, or supply teams.
+- 'IED/Bomb' should include any references to explosives, IEDs, bombs, or explosive-related activities.
+- 'Meeting' should include any information about meetings, gatherings, or organizational assemblies.
+- 'Platoon' should include any references to specific platoons, units, or military formations.
+- You can use Hindi/Devanagari for names, places, and descriptions - this is preferred for Hindi content.
+- Strictly respond in JSON format only.
+- Fill every field fully. No fields should be left out.
 
 Report Text:
 {text_chunk}
@@ -198,6 +217,10 @@ def merge_summaries(all_summaries):
         "History": Counter(),
         "Bounty": Counter(),
         "Villages Covered": set(),
+        "Supply Team/Supply": Counter(),
+        "IED/Bomb": Counter(),
+        "Meeting": Counter(),
+        "Platoon": Counter(),
         "Criminal Activities": set(),
         "Maoist Hierarchical Role Changes": set(),
         "Police Encounters Participated": set(),
@@ -231,6 +254,10 @@ def merge_summaries(all_summaries):
             "Involvement",
             "History",
             "Bounty",
+            "Supply Team/Supply",
+            "IED/Bomb",
+            "Meeting",
+            "Platoon",
             "Total Organizational Period",
         ]:
             value = summary.get(field, "Unknown")
@@ -265,6 +292,20 @@ def merge_summaries(all_summaries):
             merged["Bounty"].most_common(1)[0][0] if merged["Bounty"] else "Unknown"
         ),
         "Villages Covered": list(merged["Villages Covered"]),
+        "Supply Team/Supply": (
+            merged["Supply Team/Supply"].most_common(1)[0][0]
+            if merged["Supply Team/Supply"]
+            else "Unknown"
+        ),
+        "IED/Bomb": (
+            merged["IED/Bomb"].most_common(1)[0][0] if merged["IED/Bomb"] else "Unknown"
+        ),
+        "Meeting": (
+            merged["Meeting"].most_common(1)[0][0] if merged["Meeting"] else "Unknown"
+        ),
+        "Platoon": (
+            merged["Platoon"].most_common(1)[0][0] if merged["Platoon"] else "Unknown"
+        ),
         "Criminal Activities": list(merged["Criminal Activities"]),
         "Maoist Hierarchical Role Changes": list(
             merged["Maoist Hierarchical Role Changes"]

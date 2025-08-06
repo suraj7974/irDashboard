@@ -214,18 +214,17 @@ def split_text_to_chunks(text, max_tokens=None):  # Make adaptive
     return chunks
 
 
-def get_chunk_summary(text_chunk, chunk_index):
+def get_chunk_summary(text_chunk, chunk_index, pdf_filename="unknown.pdf"):
     """Process a single chunk and return structured data"""
     prompt = f"""
 You are an expert analyst specializing in parsing police reports related to Maoist surrenders and activities.
 
 CRITICAL INSTRUCTIONS:
-- You MUST respond ONLY in English language
 - You MUST respond ONLY in valid JSON format
 - Do NOT include any commentary, explanations, or text outside the JSON
-- Do NOT respond in Hindi, Devanagari, or any other language
-- Use only English alphabet characters in your response
-- Translate any Hindi/Devanagari names and terms to English/Roman script
+- You can respond in Hindi or English - whatever feels natural for the content
+- For names and places, use the original script (Devanagari/Hindi is preferred for Hindi names)
+- Ensure JSON structure is valid regardless of language used in values
 
 Analyze this Maoist report chunk and return structured JSON in this exact format:
 {{
@@ -272,7 +271,8 @@ Analyze this Maoist report chunk and return structured JSON in this exact format
 }}
 
 RULES:
-- Fill every field without skipping. Use 'Unknown' where no information is found.
+- Fill every field without skipping. Use 'Unknown' या 'अज्ञात' where no information is found.
+- For names with 'urf' (like "Suraj urf Don"), put the main name in "Name" field and the alias in "Aliases" array.
 - 'Villages Covered' should list all specific villages mentioned.
 - 'Criminal Activities' should have Sr. No., Incident, Year, and Location.
 - 'Maoist Hierarchical Role Changes' tracks the evolution of post/position.
@@ -280,6 +280,7 @@ RULES:
 - 'Weapons/Assets Handled' includes any references to arms, explosives, or communications devices.
 - 'All Maoists Met' includes every Maoist person named in the report with details.
 - Answer strictly in JSON without commentary or explanations.
+- Feel free to use Hindi/Devanagari for names, places, and descriptions - this is preferred for Hindi content.
 
 Report Text:
 {text_chunk}
@@ -347,19 +348,19 @@ Report Text:
             # Strategy 3: Create a minimal valid response
             print("⚠️ Creating minimal fallback response...")
             fallback_response = {
-                "Name": "Unknown",
+                "Name": "अज्ञात",
                 "Aliases": [],
-                "Group/Battalion": "Unknown",
-                "Area/Region": "Unknown",
-                "Involvement": "Unknown",
-                "History": "Unknown",
-                "Bounty": "Unknown",
+                "Group/Battalion": "अज्ञात",
+                "Area/Region": "अज्ञात",
+                "Involvement": "अज्ञात",
+                "History": "अज्ञात",
+                "Bounty": "अज्ञात",
                 "Villages Covered": [],
                 "Criminal Activities": [],
                 "Maoist Hierarchical Role Changes": [],
                 "Police Encounters Participated": [],
                 "Weapons/Assets Handled": [],
-                "Total Organizational Period": "Unknown",
+                "Total Organizational Period": "अज्ञात",
                 "Important Points": [
                     f"Failed to parse chunk {chunk_index + 1} - original text may contain important information"
                 ],
@@ -499,7 +500,7 @@ def merge_chunk_summaries(all_summaries):
     return final_result
 
 
-def get_structured_summary(text):
+def get_structured_summary(text, pdf_filename="unknown.pdf"):
     """Main function that handles chunking and merging"""
     # Check if text is too long and needs chunking
     token_count = count_tokens(text)
@@ -512,7 +513,7 @@ def get_structured_summary(text):
 
     if token_count <= optimal_size:  # Process directly if within optimal size
         print("📝 Processing text directly (no chunking needed)")
-        chunk_summary = get_chunk_summary(text, 0)
+        chunk_summary = get_chunk_summary(text, 0, pdf_filename)
         if chunk_summary:
             return json.dumps(chunk_summary, ensure_ascii=False, indent=2)
 
@@ -525,7 +526,7 @@ def get_structured_summary(text):
 
     for idx, chunk in enumerate(chunks):
         print(f"📝 Processing Chunk {idx+1}/{len(chunks)}")
-        summary = get_chunk_summary(chunk, idx)
+        summary = get_chunk_summary(chunk, idx, pdf_filename)
         if summary:
             all_summaries.append(summary)
 

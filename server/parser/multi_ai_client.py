@@ -101,12 +101,12 @@ class MultiAIClient:
 
             gemini_models = [
                 {
-                    "name": "gemini-1.5-flash",
-                    "context_window": 1000000,  # 1M tokens!
+                    "name": "gemini-2.5-pro",
+                    "context_window": 2000000,  # 2M tokens!!
                     "max_tokens": 8192,
                     "provider": "gemini",
-                    "client": genai.GenerativeModel("gemini-1.5-flash"),
-                    "description": "Ultra-fast with massive 1M context window",
+                    "client": genai.GenerativeModel("gemini-2.5-pro"),
+                    "description": "Latest and most capable 2.5 Pro with 2M context",
                 },
                 {
                     "name": "gemini-1.5-pro",
@@ -117,12 +117,28 @@ class MultiAIClient:
                     "description": "Most capable with 2M context window",
                 },
                 {
+                    "name": "gemini-1.5-flash",
+                    "context_window": 1000000,  # 1M tokens!
+                    "max_tokens": 8192,
+                    "provider": "gemini",
+                    "client": genai.GenerativeModel("gemini-1.5-flash"),
+                    "description": "Ultra-fast with massive 1M context window",
+                },
+                {
                     "name": "gemini-2.0-flash-exp",
                     "context_window": 1000000,  # 1M tokens
                     "max_tokens": 8192,
                     "provider": "gemini",
                     "client": genai.GenerativeModel("gemini-2.0-flash-exp"),
                     "description": "Latest experimental model",
+                },
+                {
+                    "name": "gemini-1.5-flash-8b",
+                    "context_window": 1000000,  # 1M tokens
+                    "max_tokens": 8192,
+                    "provider": "gemini",
+                    "client": genai.GenerativeModel("gemini-1.5-flash-8b"),
+                    "description": "Lightweight and fast 8B parameter model",
                 },
             ]
 
