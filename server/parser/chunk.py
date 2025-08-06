@@ -1,4 +1,4 @@
-from groq_client import GroqClient
+from multi_ai_client import MultiAIClient
 import pytesseract
 from pdf2image import convert_from_path
 import os
@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-groq_client = GroqClient()
+ai_client = MultiAIClient()
 
 OUTPUT_FOLDER = "./summaries/"
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
@@ -30,14 +30,14 @@ def extract_text_from_pdf(pdf_path):
 
 def count_tokens(text, model="llama-3.1-70b-versatile"):
     """Count tokens in text using rough estimation"""
-    return groq_client.count_tokens_estimate(text)
+    return ai_client.count_tokens_estimate(text)
 
 
 def split_text_to_chunks(text, max_tokens=None):  # Make max_tokens optional
     """Split text into chunks using adaptive sizing"""
     # If max_tokens not specified, use adaptive chunking
     if max_tokens is None:
-        return groq_client.split_text_adaptive(text, safety_margin=0.6)
+        return ai_client.split_text_adaptive(text, safety_margin=0.6)
 
     # Legacy character-based chunking for specific max_tokens
     words = text.split()
@@ -60,8 +60,76 @@ def split_text_to_chunks(text, max_tokens=None):  # Make max_tokens optional
 
 
 def clean_gpt_response(raw_response):
-    cleaned = re.sub(r"```json|```", "", raw_response, flags=re.IGNORECASE).strip()
-    return cleaned
+    """
+    Robust JSON cleaning and fixing for AI-generated responses
+    """
+    print(f"🧠 Raw summary (first 100 chars): {raw_response[:100]}...")
+
+    # Remove code block markers
+    if raw_response.startswith("```json"):
+        raw_response = raw_response.split("```json")[1].split("```")[0]
+    elif raw_response.startswith("```"):
+        raw_response = raw_response.split("```")[1].split("```")[0]
+
+    # Strip whitespace
+    raw_response = raw_response.strip()
+
+    # Try to find the JSON object bounds
+    start_idx = raw_response.find("{")
+    if start_idx == -1:
+        raise ValueError("No JSON object found in response")
+
+    # Find the matching closing brace
+    brace_count = 0
+    end_idx = -1
+
+    for i in range(start_idx, len(raw_response)):
+        if raw_response[i] == "{":
+            brace_count += 1
+        elif raw_response[i] == "}":
+            brace_count -= 1
+            if brace_count == 0:
+                end_idx = i + 1
+                break
+
+    if end_idx == -1:
+        # If we can't find proper closing, try to fix it
+        print("⚠️ Incomplete JSON detected, attempting to fix...")
+        json_content = raw_response[start_idx:]
+
+        # Count quotes to find if there's an unterminated string
+        quote_count = 0
+        in_string = False
+        last_complete_pos = len(json_content)
+
+        for i, char in enumerate(json_content):
+            if char == '"' and (i == 0 or json_content[i - 1] != "\\"):
+                quote_count += 1
+                in_string = not in_string
+            elif char in [",", "}"] and not in_string:
+                last_complete_pos = i
+
+        # Truncate to last complete position and try to close properly
+        if in_string and quote_count % 2 == 1:
+            # Find last complete field
+            truncated = json_content[:last_complete_pos]
+            if truncated.endswith(","):
+                truncated = truncated[:-1]
+            json_content = truncated + "\n}"
+        else:
+            json_content = json_content + "}"
+
+        raw_response = json_content
+    else:
+        raw_response = raw_response[start_idx:end_idx]
+
+    # Additional cleaning: fix common JSON issues
+    # Fix trailing commas
+    raw_response = re.sub(r",(\s*[}\]])", r"\1", raw_response)
+
+    print(f"🔧 Cleaned JSON (first 100 chars): {raw_response[:100]}...")
+
+    return raw_response
 
 
 def get_summary_chunk(text_chunk, idx):
@@ -96,7 +164,7 @@ Report Text:
 {text_chunk}
 """
 
-    completion = groq_client.chat_completion(
+    completion = ai_client.chat_completion(
         messages=[{"role": "user", "content": prompt}], temperature=0.2
     )
     summary = completion.choices[0].message.content
@@ -106,11 +174,17 @@ Report Text:
         cleaned_summary = clean_gpt_response(summary)
         parsed_summary = json.loads(cleaned_summary)
         return parsed_summary
-    except json.JSONDecodeError:
-        print(f"❌ JSON Decode Error at Chunk {idx+1}, saving fallback response.")
+    except json.JSONDecodeError as json_err:
+        print(f"❌ JSON Decode Error at Chunk {idx+1}: {json_err}")
         error_path = os.path.join(OUTPUT_FOLDER, f"error_chunk_{idx+1}.txt")
         with open(error_path, "w", encoding="utf-8") as f:
-            f.write(summary)
+            f.write(f"Original response:\n{summary}\n\n")
+            f.write(f"Cleaned response:\n{cleaned_summary}\n\n")
+            f.write(f"Error: {json_err}")
+        print(f"💾 Error details saved to: {error_path}")
+        return None
+    except Exception as e:
+        print(f"❌ General error processing chunk {idx+1}: {e}")
         return None
 
 
