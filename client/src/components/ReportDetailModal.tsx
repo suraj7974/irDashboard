@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, Users, Building2, Hash, Award, User2 } from "lucide-react";
+import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, Users, Building2, Hash, Award, User2, Package, Target } from "lucide-react";
 import { format } from "date-fns";
 import { IRReport } from "../types";
 
@@ -182,6 +182,38 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                         <div>
                           <p className="text-sm font-medium text-gray-900">Name</p>
                           <p className="text-sm text-gray-600">{getData("name", "Name") || "Unknown"}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <Package className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Supply Team/Supply</p>
+                          <p className="text-sm text-gray-600">{getData("supply_team_supply", "Supply Team/Supply") || "Unknown"}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <Target className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">IED/Bomb</p>
+                          <p className="text-sm text-gray-600">{getData("ied_bomb", "IED/Bomb") || "Unknown"}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <Users className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Meeting</p>
+                          <p className="text-sm text-gray-600">{getData("meeting", "Meeting") || "Unknown"}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <Shield className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Platoon</p>
+                          <p className="text-sm text-gray-600">{getData("platoon", "Platoon") || "Unknown"}</p>
                         </div>
                       </div>
 

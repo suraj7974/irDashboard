@@ -280,18 +280,6 @@ def merge_summaries(all_summaries):
             if merged["Area/Region"]
             else "Unknown"
         ),
-        "Involvement": (
-            merged["Involvement"].most_common(1)[0][0]
-            if merged["Involvement"]
-            else "Unknown"
-        ),
-        "History": (
-            merged["History"].most_common(1)[0][0] if merged["History"] else "Unknown"
-        ),
-        "Bounty": (
-            merged["Bounty"].most_common(1)[0][0] if merged["Bounty"] else "Unknown"
-        ),
-        "Villages Covered": list(merged["Villages Covered"]),
         "Supply Team/Supply": (
             merged["Supply Team/Supply"].most_common(1)[0][0]
             if merged["Supply Team/Supply"]
@@ -306,6 +294,18 @@ def merge_summaries(all_summaries):
         "Platoon": (
             merged["Platoon"].most_common(1)[0][0] if merged["Platoon"] else "Unknown"
         ),
+        "Involvement": (
+            merged["Involvement"].most_common(1)[0][0]
+            if merged["Involvement"]
+            else "Unknown"
+        ),
+        "History": (
+            merged["History"].most_common(1)[0][0] if merged["History"] else "Unknown"
+        ),
+        "Bounty": (
+            merged["Bounty"].most_common(1)[0][0] if merged["Bounty"] else "Unknown"
+        ),
+        "Villages Covered": list(merged["Villages Covered"]),
         "Criminal Activities": list(merged["Criminal Activities"]),
         "Maoist Hierarchical Role Changes": list(
             merged["Maoist Hierarchical Role Changes"]

@@ -27,6 +27,10 @@ export interface IRReportMetadata {
   aliases?: string[];
   group_battalion?: string;
   area_region?: string;
+  supply_team_supply?: string;
+  ied_bomb?: string;
+  meeting?: string;
+  platoon?: string;
   involvement?: string;
   history?: string;
   bounty?: string;

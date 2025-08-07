@@ -232,6 +232,10 @@ Analyze this Maoist report chunk and return structured JSON in this exact format
   "Aliases": [],
   "Group/Battalion": "",
   "Area/Region": "",
+  "Supply Team/Supply": "",
+  "IED/Bomb": "",
+  "Meeting": "",
+  "Platoon": "",
   "Involvement": "",
   "History": "",
   "Bounty": "",
@@ -274,6 +278,10 @@ RULES:
 - Fill every field without skipping. Use 'Unknown' या 'अज्ञात' where no information is found.
 - For names with 'urf' (like "Suraj urf Don"), put the main name in "Name" field and the alias in "Aliases" array.
 - 'Villages Covered' should list all specific villages mentioned.
+- 'Supply Team/Supply' should include any information about supply operations, logistics, or supply teams.
+- 'IED/Bomb' should include any references to explosives, IEDs, bombs, or explosive-related activities.
+- 'Meeting' should include any information about meetings, gatherings, or organizational assemblies.
+- 'Platoon' should include any references to specific platoons, units, or military formations.
 - 'Criminal Activities' should have Sr. No., Incident, Year, and Location.
 - 'Maoist Hierarchical Role Changes' tracks the evolution of post/position.
 - 'Police Encounters Participated' summarizes each police confrontation.
@@ -352,6 +360,10 @@ Report Text:
                 "Aliases": [],
                 "Group/Battalion": "अज्ञात",
                 "Area/Region": "अज्ञात",
+                "Supply Team/Supply": "अज्ञात",
+                "IED/Bomb": "अज्ञात",
+                "Meeting": "अज्ञात",
+                "Platoon": "अज्ञात",
                 "Involvement": "अज्ञात",
                 "History": "अज्ञात",
                 "Bounty": "अज्ञात",
@@ -391,6 +403,10 @@ def merge_chunk_summaries(all_summaries):
         "Aliases": set(),
         "Group/Battalion": Counter(),
         "Area/Region": Counter(),
+        "Supply Team/Supply": Counter(),
+        "IED/Bomb": Counter(),
+        "Meeting": Counter(),
+        "Platoon": Counter(),
         "Involvement": Counter(),
         "History": Counter(),
         "Bounty": Counter(),
@@ -437,6 +453,10 @@ def merge_chunk_summaries(all_summaries):
         for field in [
             "Group/Battalion",
             "Area/Region",
+            "Supply Team/Supply",
+            "IED/Bomb",
+            "Meeting",
+            "Platoon",
             "Involvement",
             "History",
             "Bounty",
@@ -467,6 +487,20 @@ def merge_chunk_summaries(all_summaries):
             merged["Area/Region"].most_common(1)[0][0]
             if merged["Area/Region"]
             else "Unknown"
+        ),
+        "Supply Team/Supply": (
+            merged["Supply Team/Supply"].most_common(1)[0][0]
+            if merged["Supply Team/Supply"]
+            else "Unknown"
+        ),
+        "IED/Bomb": (
+            merged["IED/Bomb"].most_common(1)[0][0] if merged["IED/Bomb"] else "Unknown"
+        ),
+        "Meeting": (
+            merged["Meeting"].most_common(1)[0][0] if merged["Meeting"] else "Unknown"
+        ),
+        "Platoon": (
+            merged["Platoon"].most_common(1)[0][0] if merged["Platoon"] else "Unknown"
         ),
         "Involvement": (
             merged["Involvement"].most_common(1)[0][0]

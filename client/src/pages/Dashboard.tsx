@@ -71,6 +71,10 @@ export default function Dashboard() {
           report.summary?.toLowerCase().includes(query) ||
           report.metadata?.name?.toLowerCase().includes(query) ||
           report.metadata?.area_region?.toLowerCase().includes(query) ||
+          report.metadata?.supply_team_supply?.toLowerCase().includes(query) ||
+          report.metadata?.ied_bomb?.toLowerCase().includes(query) ||
+          report.metadata?.meeting?.toLowerCase().includes(query) ||
+          report.metadata?.platoon?.toLowerCase().includes(query) ||
           report.metadata?.aliases?.some((alias) => alias.toLowerCase().includes(query)) ||
           report.metadata?.villages_covered?.some((village) => village.toLowerCase().includes(query)) ||
           report.police_station?.toLowerCase().includes(query) ||
