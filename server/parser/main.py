@@ -34,6 +34,10 @@ def get_structured_summary(text):
       "Aliases": [],
       "Group/Battalion": "",
       "Area/Region": "",
+      "Supply Team/Supply": "",
+      "IED/Bomb": "",
+      "Meeting": "",
+      "Platoon": "",
       "Involvement": "",
       "History": "",
       "Bounty": "",
@@ -72,7 +76,12 @@ def get_structured_summary(text):
       ]
     }}
     - Fill every field without skipping. Use 'Unknown' where no information is found.
+    - For names with 'urf' (like "Suraj urf Don"), put the main name in "Name" field and the alias in "Aliases" array.
     - 'Villages Covered' should list all specific villages mentioned.
+    - 'Supply Team/Supply' should include any information about supply operations, logistics, or supply teams.
+    - 'IED/Bomb' should include any references to explosives, IEDs, bombs, or explosive-related activities.
+    - 'Meeting' should include any information about meetings, gatherings, or organizational assemblies.
+    - 'Platoon' should include any references to specific platoons, units, or military formations.
     - 'Criminal Activities' should have Sr. No., Incident, Year, and Location.
     - 'Maoist Hierarchical Role Changes' tracks the evolution of post/position.
     - 'Police Encounters Participated' summarizes each police confrontation.

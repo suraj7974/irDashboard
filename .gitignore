@@ -44,3 +44,5 @@ server/.do/
 # Python cache
 *.pyc
 .pytest_cache/
+
+upload_script/pdfs

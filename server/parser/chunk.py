@@ -69,6 +69,10 @@ Analyze this Hindi Maoist report chunk and return structured JSON in this exact 
   "Aliases": [],
   "Group/Battalion": "",
   "Area/Region": "",
+  "Supply Team/Supply": "",
+  "IED/Bomb": "",
+  "Meeting": "",
+  "Platoon": "",
   "Involvement": "",
   "History": "",
   "Bounty": "",
@@ -84,6 +88,10 @@ Analyze this Hindi Maoist report chunk and return structured JSON in this exact 
 
 → For each village, include the associated district if mentioned or 'Unknown'.
 → For 'All Maoists Met', give the name, designation (if known), and approximate date met (if known), otherwise leave date blank or 'Unknown'.
+→ 'Supply Team/Supply' should include any information about supply operations, logistics, or supply teams.
+→ 'IED/Bomb' should include any references to explosives, IEDs, bombs, or explosive-related activities.
+→ 'Meeting' should include any information about meetings, gatherings, or organizational assemblies.
+→ 'Platoon' should include any references to specific platoons, units, or military formations.
 → Strictly respond in JSON format only.
 → Fill every field fully. No fields should be left out.
 
@@ -115,6 +123,10 @@ def merge_summaries(all_summaries):
         "Aliases": set(),
         "Group/Battalion": Counter(),
         "Area/Region": Counter(),
+        "Supply Team/Supply": Counter(),
+        "IED/Bomb": Counter(),
+        "Meeting": Counter(),
+        "Platoon": Counter(),
         "Involvement": Counter(),
         "History": Counter(),
         "Bounty": Counter(),
@@ -149,6 +161,10 @@ def merge_summaries(all_summaries):
         for field in [
             "Group/Battalion",
             "Area/Region",
+            "Supply Team/Supply",
+            "IED/Bomb",
+            "Meeting",
+            "Platoon",
             "Involvement",
             "History",
             "Bounty",
@@ -172,6 +188,26 @@ def merge_summaries(all_summaries):
         "Area/Region": (
             merged["Area/Region"].most_common(1)[0][0]
             if merged["Area/Region"]
+            else "Unknown"
+        ),
+        "Supply Team/Supply": (
+            merged["Supply Team/Supply"].most_common(1)[0][0]
+            if merged["Supply Team/Supply"]
+            else "Unknown"
+        ),
+        "IED/Bomb": (
+            merged["IED/Bomb"].most_common(1)[0][0]
+            if merged["IED/Bomb"]
+            else "Unknown"
+        ),
+        "Meeting": (
+            merged["Meeting"].most_common(1)[0][0]
+            if merged["Meeting"]
+            else "Unknown"
+        ),
+        "Platoon": (
+            merged["Platoon"].most_common(1)[0][0]
+            if merged["Platoon"]
             else "Unknown"
         ),
         "Involvement": (

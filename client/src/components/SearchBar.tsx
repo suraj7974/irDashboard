@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Filter, X, Calendar, MapPin, User, Shield, Users, Zap } from "lucide-react";
+import { Search, Filter, X, Calendar, MapPin, User, Shield, Users, Zap, Package, Target } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SearchFilters, IRReport } from "../types";
 
@@ -11,7 +11,7 @@ interface SearchBarProps {
 }
 
 interface SearchSuggestion {
-  type: "name" | "area" | "group" | "alias" | "village" | "activity" | "filename";
+  type: "name" | "area" | "group" | "alias" | "village" | "activity" | "filename" | "supply" | "ied" | "meeting" | "platoon";
   value: string;
   label: string;
   count: number;
@@ -83,6 +83,46 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
             type: "group",
             value: report.metadata.group_battalion,
             label: report.metadata.group_battalion,
+            count: 1,
+          });
+        }
+
+        // Search in supply team/supply
+        if (report.metadata.supply_team_supply && report.metadata.supply_team_supply.toLowerCase().includes(queryLower)) {
+          allSuggestions.push({
+            type: "supply",
+            value: report.metadata.supply_team_supply,
+            label: report.metadata.supply_team_supply,
+            count: 1,
+          });
+        }
+
+        // Search in IED/Bomb
+        if (report.metadata.ied_bomb && report.metadata.ied_bomb.toLowerCase().includes(queryLower)) {
+          allSuggestions.push({
+            type: "ied",
+            value: report.metadata.ied_bomb,
+            label: report.metadata.ied_bomb,
+            count: 1,
+          });
+        }
+
+        // Search in Meeting
+        if (report.metadata.meeting && report.metadata.meeting.toLowerCase().includes(queryLower)) {
+          allSuggestions.push({
+            type: "meeting",
+            value: report.metadata.meeting,
+            label: report.metadata.meeting,
+            count: 1,
+          });
+        }
+
+        // Search in Platoon
+        if (report.metadata.platoon && report.metadata.platoon.toLowerCase().includes(queryLower)) {
+          allSuggestions.push({
+            type: "platoon",
+            value: report.metadata.platoon,
+            label: report.metadata.platoon,
             count: 1,
           });
         }
@@ -309,6 +349,14 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
         return <Zap className="h-4 w-4 text-red-500" />;
       case "filename":
         return <X className="h-4 w-4 text-gray-500" />;
+      case "supply":
+        return <Package className="h-4 w-4 text-blue-500" />;
+      case "ied":
+        return <Target className="h-4 w-4 text-red-500" />;
+      case "meeting":
+        return <Users className="h-4 w-4 text-green-500" />;
+      case "platoon":
+        return <Shield className="h-4 w-4 text-purple-500" />;
       default:
         return <Search className="h-4 w-4 text-gray-400" />;
     }
@@ -331,6 +379,14 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
         return "Activity";
       case "filename":
         return "File";
+      case "supply":
+        return "Supply";
+      case "ied":
+        return "IED/Bomb";
+      case "meeting":
+        return "Meeting";
+      case "platoon":
+        return "Platoon";
       default:
         return "Result";
     }
