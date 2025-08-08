@@ -26,7 +26,7 @@ dist-ssr
 __pycache__/
 .vite/
 
-# Fixed typo: "server" not "sever"
+
 server/__pycache__/
 
 # Environment files
