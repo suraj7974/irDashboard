@@ -26,7 +26,6 @@ dist-ssr
 __pycache__/
 .vite/
 
-
 server/__pycache__/
 
 # Environment files
