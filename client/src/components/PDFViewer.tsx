@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Worker } from "@react-pdf-viewer/core";
 import { Viewer, SpecialZoomLevel } from "@react-pdf-viewer/core";
 import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
@@ -16,8 +16,6 @@ interface PDFViewerProps {
 }
 
 export default function PDFViewer({ fileUrl, onClose, title }: PDFViewerProps) {
-  const [isLoading, setIsLoading] = useState(true);
-
   // Create plugins
   const searchPluginInstance = searchPlugin({
     keyword: [""], // Empty initial search
@@ -78,10 +76,6 @@ export default function PDFViewer({ fileUrl, onClose, title }: PDFViewerProps) {
     ),
   });
 
-  const handleDocumentLoad = () => {
-    setIsLoading(false);
-  };
-
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-xl max-w-6xl max-h-[90vh] w-full mx-4 flex flex-col">
@@ -97,20 +91,9 @@ export default function PDFViewer({ fileUrl, onClose, title }: PDFViewerProps) {
 
         {/* PDF Viewer */}
         <div className="flex-1 overflow-hidden">
-          {isLoading && (
-            <div className="flex items-center justify-center h-96">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          )}
-
           <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
             <div style={{ height: "600px" }}>
-              <Viewer
-                fileUrl={fileUrl}
-                plugins={[defaultLayoutPluginInstance, searchPluginInstance]}
-                onDocumentLoad={handleDocumentLoad}
-                defaultScale={SpecialZoomLevel.PageWidth}
-              />
+              <Viewer fileUrl={fileUrl} plugins={[defaultLayoutPluginInstance, searchPluginInstance]} defaultScale={SpecialZoomLevel.PageWidth} />
             </div>
           </Worker>
         </div>
