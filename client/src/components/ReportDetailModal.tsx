@@ -1,8 +1,9 @@
-import React from "react";
+import { useState } from 'react';
 import { motion } from "framer-motion";
 import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, Users, Building2, Hash, Award, User2, Package, Target } from "lucide-react";
 import { format } from "date-fns";
 import { IRReport } from "../types";
+import PDFViewer from './PDFViewer';
 
 interface ReportDetailModalProps {
   report: IRReport;
@@ -13,8 +14,10 @@ interface ReportDetailModalProps {
 
 export default function ReportDetailModal({ report, isOpen, onClose, onDownload }: ReportDetailModalProps) {
   if (!isOpen) return null;
+  
 
   const { metadata } = report;
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
 
   // Debug log to see the actual data structure
   console.log("Report metadata:", metadata);
@@ -60,19 +63,22 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => onDownload(report, "pdf")}
-              className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
-            >
-              <Download className="h-4 w-4" />
-              <span>Download PDF</span>
-            </button>
-
-            <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+          <div className="flex gap-2">
+  <button
+    onClick={() => setShowPDFViewer(true)}
+    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+  >
+    <FileText className="w-4 h-4" />
+    View PDF
+  </button>
+  <button
+    onClick={() => onDownload(report, "pdf")}
+    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+  >
+    <Download className="w-4 h-4" />
+    Download
+  </button>
+</div>
         </div>
 
         {/* Content */}
@@ -495,6 +501,14 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                     </div>
                   </div>
                 )}
+                {showPDFViewer && report.file_url && (
+                  <PDFViewer
+                    fileUrl={report.file_url}
+                    onClose={() => setShowPDFViewer(false)}
+                    title={report.original_filename}
+                  />
+                )}
+
               </>
             )}
           </div>
