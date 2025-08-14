@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, Users, Package, Target } from "lucide-react";
+import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, Users, Package, Target, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { IRReport } from "../types";
+import PDFViewer from "./PDFViewer";
 
 interface ReportDetailModalProps {
   report: IRReport;
@@ -13,6 +14,7 @@ interface ReportDetailModalProps {
 
 export default function ReportDetailModal({ report, isOpen, onClose, onDownload }: ReportDetailModalProps) {
   const [imageError, setImageError] = useState(false);
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
 
   if (!isOpen) return null;
 
@@ -75,6 +77,14 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
           </div>
 
           <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setShowPDFViewer(true)}
+              className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors"
+            >
+              <Eye className="h-4 w-4" />
+              <span>View PDF</span>
+            </button>
+
             <button
               onClick={() => onDownload(report, "pdf")}
               className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
@@ -494,6 +504,9 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
           </div>
         </div>
       </motion.div>
+
+      {/* PDF Viewer Modal */}
+      {showPDFViewer && report.file_url && <PDFViewer fileUrl={report.file_url} onClose={() => setShowPDFViewer(false)} title={report.original_filename} />}
     </motion.div>
   );
 }
