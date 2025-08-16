@@ -18,6 +18,7 @@
     "@supabase/supabase-js": "^2.52.0",
     "@types/node": "^24.0.15",
     "date-fns": "^4.1.0",
+    "firebase": "^12.1.0",
     "framer-motion": "^12.23.6",
     "lucide-react": "^0.525.0",
     "pdfjs-dist": "^3.11.174",

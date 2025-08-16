@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Search, BarChart3, Users, Clock, AlertTriangle } from "lucide-react";
+import { FileText, Search, BarChart3, Users, Clock, AlertTriangle, LogOut } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 import SearchBar from "../components/SearchBar";
 import ReportCard from "../components/ReportCard";
 import ReportDetailModal from "../components/ReportDetailModal";
@@ -8,6 +9,7 @@ import { IRReport, SearchFilters } from "../types";
 import { IRReportAPI } from "../api/reports";
 
 export default function Dashboard() {
+  const { user, logout } = useAuth();
   const [reports, setReports] = useState<IRReport[]>([]);
   const [filteredReports, setFilteredReports] = useState<IRReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,6 +149,18 @@ export default function Dashboard() {
                 <h1 className="text-xl font-bold text-gray-900">IR Dashboard</h1>
                 <p className="text-sm text-gray-500">Incident Reports Management System</p>
               </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-700">{user?.displayName || user?.email}</span>
+              </div>
+              <button
+                onClick={logout}
+                className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </button>
             </div>
           </div>
         </div>
