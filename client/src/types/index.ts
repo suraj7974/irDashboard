@@ -17,6 +17,29 @@ export interface IRReport {
   area_committee?: string;
   uid_for_name?: string;
   rank?: string;
+  // 60 Questions fields
+  sixty_questions?: SixtyQuestionsData;
+  sixty_questions_summary?: string;
+}
+
+export interface SixtyQuestionsData {
+  total_questions_found: number;
+  extraction_method: string;
+  questions: { [key: string]: SixtyQuestion };
+}
+
+export interface SixtyQuestion {
+  question_number: number;
+  content: string | { raw_content?: string; [key: string]: any };
+  answer?: string;
+  is_table: boolean;
+  table_content?: TableContent;
+}
+
+export interface TableContent {
+  headers: string[];
+  rows: string[][];
+  note?: string;
 }
 
 export interface IRReportMetadata {

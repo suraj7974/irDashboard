@@ -274,55 +274,13 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                   </div>
                 </div>
 
-                {/* All Available Data */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">All Available Information</h3>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {metadata &&
-                        Object.entries(metadata).map(([key, value]) => {
-                          if (!value || (Array.isArray(value) && value.length === 0)) return null;
-
-                          // Function to render complex array values
-                          const renderValue = () => {
-                            if (Array.isArray(value)) {
-                              // Handle arrays of objects (like criminal_activities, police_encounters, etc.)
-                              if (value.length > 0 && typeof value[0] === "object") {
-                                return (
-                                  <div className="space-y-2">
-                                    {value.map((item, index) => (
-                                      <div key={index} className="bg-white p-2 rounded border text-xs">
-                                        {Object.entries(item).map(([itemKey, itemValue]) => (
-                                          <div key={itemKey} className="flex justify-between">
-                                            <span className="font-medium text-gray-500">{itemKey.replace(/_/g, " ")}:</span>
-                                            <span className="text-gray-700">{String(itemValue)}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    ))}
-                                  </div>
-                                );
-                              } else {
-                                // Handle arrays of strings
-                                return <span>{value.join(", ")}</span>;
-                              }
-                            } else if (typeof value === "object") {
-                              return <pre className="text-xs bg-white p-2 rounded border overflow-x-auto">{JSON.stringify(value, null, 2)}</pre>;
-                            } else {
-                              return <span>{String(value)}</span>;
-                            }
-                          };
-
-                          return (
-                            <div key={key} className="border-b border-gray-200 pb-2">
-                              <p className="text-sm font-medium text-gray-900 capitalize">{key.replace(/_/g, " ")}:</p>
-                              <div className="text-sm text-gray-600 mt-1">{renderValue()}</div>
-                            </div>
-                          );
-                        })}
-                    </div>
+                {/* Summary */}
+                {report.summary && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Summary</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-lg">{report.summary}</p>
                   </div>
-                </div>
+                )}
 
                 {/* Aliases */}
                 {(getData("aliases", "Aliases") || getData("aliases", "उपनाम")) && (
@@ -494,6 +452,106 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                         <div key={index} className="flex items-start space-x-2">
                           <span className="flex-shrink-0 w-2 h-2 bg-yellow-400 rounded-full mt-2"></span>
                           <p className="text-sm text-gray-700">{point}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* 60 Questions */}
+                {report.sixty_questions && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Standardized Questions (Form A)</h3>
+
+                    {/* Summary of 60 Questions */}
+                    {report.sixty_questions_summary && (
+                      <div className="mb-6 bg-blue-50 p-4 rounded-lg">
+                        <h4 className="text-md font-medium text-blue-900 mb-2">60 Questions Summary</h4>
+                        <p className="text-sm text-blue-800 leading-relaxed">{report.sixty_questions_summary}</p>
+                        <div className="mt-2 text-xs text-blue-700">
+                          <span>Total Questions Found: {report.sixty_questions?.total_questions_found || 0}</span>
+                          <span className="ml-4">Extraction Method: {report.sixty_questions?.extraction_method || "OCR"}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      {Object.values(report.sixty_questions.questions).map((question, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="flex items-start space-x-3">
+                            <span className="flex-shrink-0 w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium">
+                              {question.question_number}
+                            </span>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900 mb-2">Question {question.question_number}</p>
+
+                              {/* Check if it's a table question (28-40) */}
+                              {question.question_number >= 28 && question.question_number <= 40 && question.table_content ? (
+                                <div>
+                                  <div className="overflow-x-auto">
+                                    <table className="min-w-full border border-gray-300 rounded-lg text-xs">
+                                      <thead className="bg-gray-100">
+                                        <tr>
+                                          {question.table_content.headers.map((header, headerIndex) => (
+                                            <th key={headerIndex} className="px-2 py-2 text-left font-medium text-gray-700 border border-gray-300">
+                                              {header}
+                                            </th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody className="bg-white">
+                                        {question.table_content.rows && question.table_content.rows.length > 0 ? (
+                                          question.table_content.rows.map((row, rowIndex) => (
+                                            <tr key={rowIndex} className={rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                                              {row.map((cell, cellIndex) => (
+                                                <td key={cellIndex} className="px-2 py-2 text-gray-700 border border-gray-300">
+                                                  {cell}
+                                                </td>
+                                              ))}
+                                            </tr>
+                                          ))
+                                        ) : (
+                                          <tr>
+                                            <td colSpan={question.table_content.headers.length} className="px-2 py-4 text-center text-gray-500 italic">
+                                              No table data extracted
+                                            </td>
+                                          </tr>
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                  {question.table_content.note && <p className="text-xs text-orange-600 mt-2 italic">{question.table_content.note}</p>}
+                                  {/* Also show raw content for table questions */}
+                                  <div className="bg-white p-3 rounded border mt-2">
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                      {(() => {
+                                        const content =
+                                          typeof question.content === "string"
+                                            ? question.content
+                                            : question.content?.raw_content || JSON.stringify(question.content);
+                                        return content.includes("प्रश्न नहीं मिला") || content.includes("Question not found")
+                                          ? "Question not extracted from document"
+                                          : content;
+                                      })()}
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="bg-white p-3 rounded border">
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                    {(() => {
+                                      const content =
+                                        typeof question.content === "string"
+                                          ? question.content
+                                          : question.content?.raw_content || JSON.stringify(question.content);
+                                      return content.includes("प्रश्न नहीं मिला") || content.includes("Question not found")
+                                        ? "Question not extracted from document"
+                                        : content;
+                                    })()}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
