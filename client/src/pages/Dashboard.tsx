@@ -169,15 +169,16 @@ export default function Dashboard() {
 
         try {
           // Process with parser
-          const metadata = await ParserService.processPDF(file);
-          console.log("Processed metadata:", metadata);
-          const summary = ParserService.generateSummary(metadata);
+          const result = await ParserService.processPDF(file);
+          console.log("Processed result:", result);
+          const summary = ParserService.generateSummary(result.metadata);
           console.log("Generated summary:", summary);
 
           // Update report with results (no JSON upload needed)
           const updateData = {
             status: "completed" as const,
-            metadata,
+            metadata: result.metadata,
+            questions_analysis: result.questions_analysis,
             summary,
           };
           console.log("Update data being sent:", updateData);

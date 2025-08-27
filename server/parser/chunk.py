@@ -162,15 +162,15 @@ Analyze this Maoist report chunk and return structured JSON in this exact format
   "Police Encounters Participated": [],
   "Weapons/Assets Handled": [],
   "Total Organizational Period": "",
-  "Important Points": [],
-  "All Maoists Met": [{{"Name": "", "Designation": "", "Date Met": ""}}]
+  "Important Points": []
 }}
 
 RULES:
 - Fill every field without skipping. Use 'Unknown' या 'अज्ञात' where no information is found.
 - For names with 'urf' (like "Suraj urf Don"), put the main name in "Name" field and the alias in "Aliases" array.
 - For each village, include the associated district if mentioned or 'Unknown'/'अज्ञात'.
-- For 'All Maoists Met', give the name, designation (if known), and approximate date met (if known), otherwise leave date blank or 'Unknown'/'अज्ञात'.
+
+Important Guidelines:
 - 'Supply Team/Supply' should include any information about supply operations, logistics, or supply teams.
 - 'IED/Bomb' should include any references to explosives, IEDs, bombs, or explosive-related activities.
 - 'Meeting' should include any information about meetings, gatherings, or organizational assemblies.
@@ -227,7 +227,6 @@ def merge_summaries(all_summaries):
         "Weapons/Assets Handled": set(),
         "Total Organizational Period": Counter(),
         "Important Points": set(),
-        "All Maoists Met": set(),
     }
 
     for summary in all_summaries:
@@ -246,7 +245,6 @@ def merge_summaries(all_summaries):
             summary.get("Weapons/Assets Handled", [])
         )
         merged["Important Points"].update(summary.get("Important Points", []))
-        merged["All Maoists Met"].update(summary.get("All Maoists Met", []))
 
         for field in [
             "Group/Battalion",
@@ -320,7 +318,6 @@ def merge_summaries(all_summaries):
             else "Unknown"
         ),
         "Important Points": list(merged["Important Points"]),
-        "All Maoists Met": list(merged["All Maoists Met"]),
     }
     return final_result
 

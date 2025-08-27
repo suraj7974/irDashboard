@@ -1,9 +1,29 @@
-import { useState } from 'react';
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, Users, Building2, Hash, Award, User2, Package, Target } from "lucide-react";
+import {
+  X,
+  FileText,
+  Download,
+  Calendar,
+  MapPin,
+  User,
+  Shield,
+  Clock,
+  Zap,
+  Users,
+  Building2,
+  Hash,
+  Award,
+  User2,
+  Package,
+  Target,
+  HelpCircle,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 import { format } from "date-fns";
 import { IRReport } from "../types";
-import PDFViewer from './PDFViewer';
+import PDFViewer from "./PDFViewer";
 
 interface ReportDetailModalProps {
   report: IRReport;
@@ -14,7 +34,6 @@ interface ReportDetailModalProps {
 
 export default function ReportDetailModal({ report, isOpen, onClose, onDownload }: ReportDetailModalProps) {
   if (!isOpen) return null;
-  
 
   const { metadata } = report;
   const [showPDFViewer, setShowPDFViewer] = useState(false);
@@ -64,21 +83,21 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
           </div>
 
           <div className="flex gap-2">
-  <button
-    onClick={() => setShowPDFViewer(true)}
-    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-  >
-    <FileText className="w-4 h-4" />
-    View PDF
-  </button>
-  <button
-    onClick={() => onDownload(report, "pdf")}
-    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-  >
-    <Download className="w-4 h-4" />
-    Download
-  </button>
-</div>
+            <button
+              onClick={() => setShowPDFViewer(true)}
+              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              View PDF
+            </button>
+            <button
+              onClick={() => onDownload(report, "pdf")}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Download
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -452,27 +471,6 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                   </div>
                 )}
 
-                {/* Maoists Met */}
-                {metadata.maoists_met && metadata.maoists_met.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Maoists Met</h3>
-                    <div className="space-y-3">
-                      {metadata.maoists_met.map((contact, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-blue-50">
-                          <div className="grid grid-cols-2 gap-4">
-                            {Object.entries(contact).map(([key, value]) => (
-                              <div key={key} className="flex flex-col">
-                                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{key.replace(/_/g, " ")}</span>
-                                <span className="text-sm text-gray-900 mt-1">{String(value)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Weapons/Assets */}
                 {metadata.weapons_assets && metadata.weapons_assets.length > 0 && (
                   <div>
@@ -501,14 +499,64 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                     </div>
                   </div>
                 )}
-                {showPDFViewer && report.file_url && (
-                  <PDFViewer
-                    fileUrl={report.file_url}
-                    onClose={() => setShowPDFViewer(false)}
-                    title={report.original_filename}
-                  />
+
+                {/* Questions Analysis */}
+                {report.questions_analysis && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <HelpCircle className="h-5 w-5 mr-2" />
+                      Standard Questions
+                    </h3>
+
+                    {report.questions_analysis.success ? (
+                      <>
+                        {/* Questions and Answers */}
+                        {report.questions_analysis.results.length > 0 ? (
+                          <div className="space-y-4 max-h-96 overflow-y-auto">
+                            {report.questions_analysis.results.map((result, index) => (
+                              <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                <div className="mb-3">
+                                  <h4 className="font-medium text-gray-900 text-sm mb-1">Question:</h4>
+                                  <p className="text-sm text-blue-700 bg-blue-50 p-2 rounded border">{result.standard_question}</p>
+                                </div>
+
+                                <div>
+                                  {result.answer && result.answer.trim() !== "" ? (
+                                    <p className="text-sm text-gray-700 bg-white p-3 rounded border border-gray-300 whitespace-pre-wrap">{result.answer}</p>
+                                  ) : (
+                                    <p className="text-sm text-gray-500 bg-gray-100 p-3 rounded border border-gray-300 italic">
+                                      No answer found in the document
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-gray-500">
+                            <HelpCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                            <p>No questions were processed from this document.</p>
+                            <p className="text-xs mt-2">Total questions processed: {report.questions_analysis.summary.total_questions}</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-center">
+                          <XCircle className="h-5 w-5 text-red-600 mr-2" />
+                          <div>
+                            <p className="text-sm font-medium text-red-900">Questions analysis failed</p>
+                            {report.questions_analysis.error && <p className="text-sm text-red-700 mt-1">{report.questions_analysis.error}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
 
+                {showPDFViewer && report.file_url && (
+                  <PDFViewer fileUrl={report.file_url} onClose={() => setShowPDFViewer(false)} title={report.original_filename} />
+                )}
               </>
             )}
           </div>

@@ -1,10 +1,15 @@
-import { IRReportMetadata } from "../types";
+import { IRReportMetadata, QuestionsAnalysis } from "../types";
+
+export interface ParsedResult {
+  metadata: IRReportMetadata;
+  questions_analysis?: QuestionsAnalysis;
+}
 
 export class ParserService {
   private static readonly PARSER_ENDPOINT = import.meta.env.VITE_PARSER_API_URL || "http://localhost:8000";
 
   // Process PDF with your existing parser
-  static async processPDF(file: File): Promise<IRReportMetadata> {
+  static async processPDF(file: File): Promise<ParsedResult> {
     console.log("ParserService.processPDF called with file:", file.name);
     console.log("Parser endpoint:", this.PARSER_ENDPOINT);
 
@@ -35,7 +40,10 @@ export class ParserService {
       const actualData = result.data || result;
       console.log("Actual data to parse:", actualData);
 
-      return this.parseMetadata(actualData);
+      return {
+        metadata: this.parseMetadata(actualData),
+        questions_analysis: result.questions_analysis
+      };
     } catch (error) {
       console.error("Parser service error:", error);
       throw new Error(`Failed to process PDF: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -67,7 +75,6 @@ export class ParserService {
         : [],
       organizational_period: data["Total Organizational Period"] || data.organizational_period || "",
       important_points: Array.isArray(data["Important Points"]) ? data["Important Points"] : Array.isArray(data.important_points) ? data.important_points : [],
-      maoists_met: this.parseMaoistContacts(data["All Maoists Met"] || data.maoists_met || []),
     };
   }
 
@@ -108,24 +115,6 @@ export class ParserService {
     return encounters.map((encounter) => ({
       year: encounter.Year || encounter.year || "",
       encounter_details: encounter["Encounter Details"] || encounter.encounter_details || "",
-    }));
-  }
-
-  private static parseMaoistContacts(contacts: any[]): Array<{
-    sr_no: number;
-    name: string;
-    group: string;
-    year_met: string;
-    bounty_rank_importance: string;
-  }> {
-    if (!Array.isArray(contacts)) return [];
-
-    return contacts.map((contact) => ({
-      sr_no: contact["Sr. No."] || contact.sr_no || 0,
-      name: contact.Name || contact.name || "",
-      group: contact.Group || contact.group || "",
-      year_met: contact["Year Met"] || contact.year_met || "",
-      bounty_rank_importance: contact["Bounty/Rank/Importance"] || contact.bounty_rank_importance || "",
     }));
   }
 

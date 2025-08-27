@@ -10,6 +10,7 @@ export interface IRReport {
   summary?: string;
   error_message?: string;
   metadata?: IRReportMetadata;
+  questions_analysis?: QuestionsAnalysis;
   // Manual details (editable once)
   police_station?: string;
   division?: string;
@@ -41,7 +42,6 @@ export interface IRReportMetadata {
   weapons_assets?: string[];
   organizational_period?: string;
   important_points?: string[];
-  maoists_met?: MaoistContact[];
 }
 
 export interface CriminalActivity {
@@ -61,12 +61,23 @@ export interface PoliceEncounter {
   encounter_details: string;
 }
 
-export interface MaoistContact {
-  sr_no: number;
-  name: string;
-  group: string;
-  year_met: string;
-  bounty_rank_importance: string;
+export interface QuestionsAnalysis {
+  success: boolean;
+  processing_time_seconds: number;
+  summary: {
+    total_questions: number;
+    questions_found: number;
+    success_rate: number;
+  };
+  results: QuestionResult[];
+  error?: string;
+}
+
+export interface QuestionResult {
+  standard_question: string;
+  found_question: string;
+  answer: string;
+  found: boolean;
 }
 
 export interface SearchFilters {

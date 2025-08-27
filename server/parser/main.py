@@ -262,16 +262,7 @@ Analyze this Maoist report chunk and return structured JSON in this exact format
   ],
   "Weapons/Assets Handled": [],
   "Total Organizational Period": "",
-  "Important Points": [],
-  "All Maoists Met": [
-    {{
-      "Sr. No.": 1,
-      "Name": "",
-      "Group": "",
-      "Year Met": "",
-      "Bounty/Rank/Importance": ""
-    }}
-  ]
+  "Important Points": []
 }}
 
 RULES:
@@ -286,7 +277,6 @@ RULES:
 - 'Maoist Hierarchical Role Changes' tracks the evolution of post/position.
 - 'Police Encounters Participated' summarizes each police confrontation.
 - 'Weapons/Assets Handled' includes any references to arms, explosives, or communications devices.
-- 'All Maoists Met' includes every Maoist person named in the report with details.
 - Answer strictly in JSON without commentary or explanations.
 - Feel free to use Hindi/Devanagari for names, places, and descriptions - this is preferred for Hindi content.
 
@@ -376,7 +366,6 @@ Report Text:
                 "Important Points": [
                     f"Failed to parse chunk {chunk_index + 1} - original text may contain important information"
                 ],
-                "All Maoists Met": [],
             }
 
             # Save the problematic response for debugging
@@ -417,7 +406,6 @@ def merge_chunk_summaries(all_summaries):
         "Weapons/Assets Handled": set(),
         "Total Organizational Period": Counter(),
         "Important Points": set(),
-        "All Maoists Met": [],
     }
 
     for summary in all_summaries:
@@ -444,10 +432,6 @@ def merge_chunk_summaries(all_summaries):
         encounters = summary.get("Police Encounters Participated", [])
         if encounters:
             merged["Police Encounters Participated"].extend(encounters)
-
-        maoists_met = summary.get("All Maoists Met", [])
-        if maoists_met:
-            merged["All Maoists Met"].extend(maoists_met)
 
         # Count frequency for single-value fields
         for field in [
@@ -528,7 +512,6 @@ def merge_chunk_summaries(all_summaries):
             else "Unknown"
         ),
         "Important Points": list(merged["Important Points"]),
-        "All Maoists Met": merged["All Maoists Met"],  # Keep nested structure
     }
 
     return final_result
