@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, Users, Package, Target, Eye } from "lucide-react";
+import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, Users, Package, Target, Eye, HelpCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { IRReport } from "../types";
 import PDFViewer from "./PDFViewer";
@@ -497,6 +497,60 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Questions Analysis */}
+                {report.questions_analysis && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <HelpCircle className="h-5 w-5 mr-2" />
+                      Standard Questions
+                    </h3>
+
+                    {report.questions_analysis.success ? (
+                      <>
+                        {/* Questions and Answers */}
+                        {report.questions_analysis.results.length > 0 ? (
+                          <div className="space-y-4 max-h-96 overflow-y-auto">
+                            {report.questions_analysis.results.map((result, index) => (
+                              <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                <div className="mb-3">
+                                  <h4 className="font-medium text-gray-900 text-sm mb-1">Question:</h4>
+                                  <p className="text-sm text-blue-700 bg-blue-50 p-2 rounded border">{result.standard_question}</p>
+                                </div>
+
+                                <div>
+                                  {result.answer && result.answer.trim() !== "" ? (
+                                    <p className="text-sm text-gray-700 bg-white p-3 rounded border border-gray-300 whitespace-pre-wrap">{result.answer}</p>
+                                  ) : (
+                                    <p className="text-sm text-gray-500 bg-gray-100 p-3 rounded border border-gray-300 italic">
+                                      No answer found in the document
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-gray-500">
+                            <HelpCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                            <p>No questions were processed from this document.</p>
+                            <p className="text-xs mt-2">Total questions processed: {report.questions_analysis.summary.total_questions}</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-center">
+                          <XCircle className="h-5 w-5 text-red-600 mr-2" />
+                          <div>
+                            <p className="text-sm font-medium text-red-900">Questions analysis failed</p>
+                            {report.questions_analysis.error && <p className="text-sm text-red-700 mt-1">{report.questions_analysis.error}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </>

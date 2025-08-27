@@ -10,8 +10,8 @@ export interface IRReport {
   summary?: string;
   error_message?: string;
   metadata?: IRReportMetadata;
+  questions_analysis?: QuestionsAnalysis;
   profile_image_url?: string;
-  // Manual fields (read-only in host branch)
   police_station?: string;
   division?: string;
   area_committee?: string;
@@ -79,4 +79,23 @@ export interface SearchFilters {
   division?: string;
   area_committee?: string;
   rank?: string;
+}
+
+export interface QuestionsAnalysis {
+  success: boolean;
+  processing_time_seconds: number;
+  summary: {
+    total_questions: number;
+    questions_found: number;
+    success_rate: number;
+  };
+  results: QuestionResult[];
+  error?: string;
+}
+
+export interface QuestionResult {
+  standard_question: string;
+  found_question: string;
+  answer: string;
+  found: boolean;
 }
