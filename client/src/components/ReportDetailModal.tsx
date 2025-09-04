@@ -513,24 +513,69 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                         {/* Questions and Answers */}
                         {report.questions_analysis.results.length > 0 ? (
                           <div className="space-y-4 max-h-96 overflow-y-auto">
-                            {report.questions_analysis.results.map((result, index) => (
-                              <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                <div className="mb-3">
-                                  <h4 className="font-medium text-gray-900 text-sm mb-1">Question:</h4>
-                                  <p className="text-sm text-blue-700 bg-blue-50 p-2 rounded border">{result.standard_question}</p>
-                                </div>
+                            {report.questions_analysis.results.map((result, index) => {
+                              // Questions 28-40 should display as tables (index 27-39 since array is 0-based)
+                              const questionNumber = index + 1;
+                              const shouldShowAsTable = questionNumber >= 28 && questionNumber <= 40;
 
-                                <div>
-                                  {result.answer && result.answer.trim() !== "" ? (
-                                    <p className="text-sm text-gray-700 bg-white p-3 rounded border border-gray-300 whitespace-pre-wrap">{result.answer}</p>
-                                  ) : (
-                                    <p className="text-sm text-gray-500 bg-gray-100 p-3 rounded border border-gray-300 italic">
-                                      No answer found in the document
-                                    </p>
-                                  )}
+                              // Function to parse tabular data for questions 28-40
+                              const parseTabularData = (answer: string) => {
+                                const rows = answer.split("\n").filter((row) => row.trim());
+                                return rows.map((row) => {
+                                  // Split by common delimiters: |, tab, or comma
+                                  if (row.includes("|")) {
+                                    return row.split("|").map((cell) => cell.trim());
+                                  } else if (row.includes("\t")) {
+                                    return row.split("\t").map((cell) => cell.trim());
+                                  } else if (row.includes(",")) {
+                                    return row.split(",").map((cell) => cell.trim());
+                                  } else {
+                                    return [row.trim()];
+                                  }
+                                });
+                              };
+
+                              const tableData = shouldShowAsTable && result.answer ? parseTabularData(result.answer) : [];
+
+                              return (
+                                <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                  <div className="mb-3">
+                                    <p className="text-sm text-blue-700 bg-blue-50 p-2 rounded border">{result.standard_question}</p>
+                                  </div>
+
+                                  <div>
+                                    {result.answer && result.answer.trim() !== "" ? (
+                                      shouldShowAsTable ? (
+                                        <div className="bg-white rounded border border-gray-300 overflow-x-auto">
+                                          <table className="min-w-full divide-y divide-gray-200">
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                              {tableData.map((row, rowIndex) => (
+                                                <tr key={rowIndex} className={rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                                                  {row.map((cell, cellIndex) => (
+                                                    <td key={cellIndex} className="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 last:border-r-0">
+                                                      {cell || "-"}
+                                                    </td>
+                                                  ))}
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                          <div className="px-3 py-2 bg-gray-100 text-xs text-gray-500 border-t border-gray-200">
+                                            {tableData.length} row{tableData.length !== 1 ? "s" : ""} found
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm text-gray-700 bg-white p-3 rounded border border-gray-300 whitespace-pre-wrap">{result.answer}</p>
+                                      )
+                                    ) : (
+                                      <p className="text-sm text-gray-500 bg-gray-100 p-3 rounded border border-gray-300 italic">
+                                        No answer found in the document
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         ) : (
                           <div className="text-center py-8 text-gray-500">
