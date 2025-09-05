@@ -1,11 +1,12 @@
 """
 Efficient LLM PDF Question-Answer Processor
-Optimized for speed and quota management
+Optimized for speed and quota management with rate limiting
 """
 
 import os
 import re
 import json
+import time
 from typing import List, Dict
 from datetime import datetime
 
@@ -39,11 +40,11 @@ from .kru_uni_smart import ExactKrutiDevConverter
 
 class EfficientLLMProcessor:
     """
-    Efficient LLM processor that processes questions one by one
+    Efficient LLM processor that processes questions one by one with rate limiting
     """
 
-    def __init__(self, api_key: str = None):
-        """Initialize the processor"""
+    def __init__(self, api_key: str = None, requests_per_minute: int = 15):
+        """Initialize the processor with rate limiting"""
 
         # Set up Gemini API
         if api_key:
@@ -59,7 +60,25 @@ class EfficientLLMProcessor:
         # Initialize converter
         self.converter = ExactKrutiDevConverter()
 
-        print("✅ Efficient LLM Processor initialized")
+        # Rate limiting settings
+        self.requests_per_minute = requests_per_minute
+        self.request_interval = 60.0 / requests_per_minute  # seconds between requests
+        self.last_request_time = 0
+
+        print(f"✅ Efficient LLM Processor initialized with {requests_per_minute} RPM rate limit")
+        print(f"⏱️  Request interval: {self.request_interval:.2f} seconds")
+
+    def _wait_for_rate_limit(self):
+        """Wait if necessary to respect rate limits"""
+        current_time = time.time()
+        time_since_last_request = current_time - self.last_request_time
+        
+        if time_since_last_request < self.request_interval:
+            wait_time = self.request_interval - time_since_last_request
+            print(f"⏳ Rate limiting: waiting {wait_time:.1f}s...")
+            time.sleep(wait_time)
+        
+        self.last_request_time = time.time()
 
     def load_questions(self, question_file: str) -> List[str]:
         """Load questions from file"""
@@ -90,7 +109,10 @@ class EfficientLLMProcessor:
     def find_and_answer_question(
         self, standard_question: str, pdf_content: str, question_index: int
     ) -> Dict:
-        """Find a specific question in PDF and extract its answer immediately"""
+        """Find a specific question in PDF and extract its answer immediately with rate limiting"""
+
+        # Apply rate limiting
+        self._wait_for_rate_limit()
 
         # Create efficient prompt for both matching and answering
         prompt = f"""
@@ -120,6 +142,7 @@ Rules:
 """
 
         try:
+            print(f"🔄 API Request {question_index + 1}/60...")
             response = self.model.generate_content(prompt)
             result_text = response.text.strip()
 
@@ -143,7 +166,15 @@ Rules:
                     }
 
         except Exception as e:
-            print(f"Error processing Q{question_index + 1}: {e}")
+            error_msg = str(e).lower()
+            print(f"❌ Error processing Q{question_index + 1}: {e}")
+            
+            # Handle specific rate limiting errors
+            if 'quota' in error_msg or 'rate limit' in error_msg or 'too many requests' in error_msg:
+                print(f"⚠️  Rate limit detected, waiting extra time...")
+                time.sleep(5)  # Wait 5 seconds on rate limit error
+            else:
+                time.sleep(2)  # Wait 2 seconds on other errors
 
         # Return empty result on failure
         return {
@@ -153,7 +184,7 @@ Rules:
         }
 
     def process_pdf_efficiently(self, pdf_path: str, question_file: str) -> Dict:
-        """Process PDF efficiently - one question at a time"""
+        """Process PDF efficiently - one question at a time with rate limiting"""
 
         start_time = datetime.now()
 
@@ -167,14 +198,22 @@ Rules:
         if not pdf_content:
             return {"error": "No content extracted from PDF"}
 
-        print(f"Processing {len(questions)} questions...")
+        total_questions = len(questions)
+        estimated_time_minutes = (total_questions * self.request_interval) / 60
+        
+        print(f"📊 Processing {total_questions} questions with rate limiting...")
+        print(f"⏱️  Estimated completion time: {estimated_time_minutes:.1f} minutes")
+        print(f"🔄 Rate limit: {self.requests_per_minute} requests/minute ({self.request_interval:.1f}s interval)")
 
         # Process questions one by one
         results = []
         successful_matches = 0
 
         for i, question in enumerate(questions):
-            print(f"Q{i+1}/{len(questions)}: Processing...")
+            progress_percent = ((i + 1) / total_questions) * 100
+            elapsed_time = (datetime.now() - start_time).total_seconds()
+            
+            print(f"📋 Q{i+1}/{total_questions} ({progress_percent:.1f}%) - Elapsed: {elapsed_time:.1f}s")
 
             result = self.find_and_answer_question(question, pdf_content, i)
             results.append(result)
@@ -197,13 +236,17 @@ Rules:
                 "success_rate": (
                     (successful_matches / len(questions)) * 100 if questions else 0
                 ),
+                "rate_limit_info": {
+                    "requests_per_minute": self.requests_per_minute,
+                    "request_interval_seconds": self.request_interval,
+                    "actual_processing_minutes": processing_time / 60
+                }
             },
             "results": results,
         }
 
-        print(
-            f"✅ Completed: {successful_matches}/{len(questions)} questions found ({final_results['summary']['success_rate']:.1f}%)"
-        )
+        print(f"✅ Completed in {processing_time/60:.1f} minutes")
+        print(f"📊 Results: {successful_matches}/{len(questions)} questions found ({final_results['summary']['success_rate']:.1f}%)")
 
         return final_results
 
