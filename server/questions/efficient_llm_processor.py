@@ -40,11 +40,11 @@ from .kru_uni_smart import ExactKrutiDevConverter
 
 class EfficientLLMProcessor:
     """
-    Efficient LLM processor that processes questions one by one with rate limiting
+    Efficient LLM processor that processes multiple questions in batches to minimize API calls
     """
 
-    def __init__(self, api_key: str = None, requests_per_minute: int = 15):
-        """Initialize the processor with rate limiting"""
+    def __init__(self, api_key: str = None, batch_size: int = 10):
+        """Initialize the processor with batch processing"""
 
         # Set up Gemini API
         if api_key:
@@ -60,25 +60,17 @@ class EfficientLLMProcessor:
         # Initialize converter
         self.converter = ExactKrutiDevConverter()
 
-        # Rate limiting settings
-        self.requests_per_minute = requests_per_minute
-        self.request_interval = 60.0 / requests_per_minute  # seconds between requests
-        self.last_request_time = 0
+        # Batch processing settings
+        self.batch_size = batch_size
+        self.request_delay = 2.0  # 2 seconds between batch requests
 
-        print(f"✅ Efficient LLM Processor initialized with {requests_per_minute} RPM rate limit")
-        print(f"⏱️  Request interval: {self.request_interval:.2f} seconds")
+        print(f"✅ Efficient LLM Processor initialized with batch size: {batch_size}")
+        print(f"⏱️  Processing ~{60//batch_size} batches instead of 60 individual requests")
 
-    def _wait_for_rate_limit(self):
-        """Wait if necessary to respect rate limits"""
-        current_time = time.time()
-        time_since_last_request = current_time - self.last_request_time
-        
-        if time_since_last_request < self.request_interval:
-            wait_time = self.request_interval - time_since_last_request
-            print(f"⏳ Rate limiting: waiting {wait_time:.1f}s...")
-            time.sleep(wait_time)
-        
-        self.last_request_time = time.time()
+    def _wait_between_batches(self):
+        """Wait between batch requests to avoid overwhelming the API"""
+        print(f"⏳ Waiting {self.request_delay}s between batches...")
+        time.sleep(self.request_delay)
 
     def load_questions(self, question_file: str) -> List[str]:
         """Load questions from file"""
@@ -106,85 +98,85 @@ class EfficientLLMProcessor:
 
         return all_text
 
-    def find_and_answer_question(
-        self, standard_question: str, pdf_content: str, question_index: int
-    ) -> Dict:
-        """Find a specific question in PDF and extract its answer immediately with rate limiting"""
+    def process_questions_batch(
+        self, questions_batch: List[str], pdf_content: str, batch_index: int
+    ) -> List[Dict]:
+        """Process a batch of questions in a single API request"""
 
-        # Apply rate limiting
-        self._wait_for_rate_limit()
-
-        # Create efficient prompt for both matching and answering
+        # Create comprehensive prompt for batch processing
+        questions_list = "\n".join([f"{i+1}. {q}" for i, q in enumerate(questions_batch)])
+        
         prompt = f"""
-Find this exact question in the document and extract its answer:
+Analyze the document and find answers for these questions. For each question, determine if it exists in the document and extract the answer.
 
-Target Question: "{standard_question}"
+QUESTIONS TO ANALYZE:
+{questions_list}
 
-Document Content:
-{pdf_content[:8000]}  
+DOCUMENT CONTENT:
+{pdf_content[:12000]}
 
-Tasks:
-1. Find the question that matches the target question (must be very similar)
-2. If found, extract the complete answer that follows the question
-3. Respond with only this JSON:
-
+For each question, respond with a JSON array where each object has:
 {{
+    "question_number": number (1-{len(questions_batch)}),
+    "standard_question": "original question text",
     "question_found": true/false,
-    "pdf_question_number": number or null,
-    "pdf_question_text": "exact text found" or "",
-    "answer_text": "complete answer" or "",
+    "pdf_question_text": "exact text found in document" or "",
+    "answer_text": "complete answer extracted" or ""
 }}
 
+Return ONLY a JSON array with {len(questions_batch)} objects, one for each question in order.
+
 Rules:
-- Only match if questions are almost identical
-- Extract the complete answer text that follows the question
-- Be concise but complete
+- Match questions that are very similar in meaning
+- Extract complete answers that follow the questions
+- If no match found, set question_found to false and leave answer_text empty
+- Be thorough but concise in answers
 """
 
         try:
-            print(f"🔄 API Request {question_index + 1}/60...")
+            print(f"🔄 Processing batch {batch_index + 1} ({len(questions_batch)} questions)...")
             response = self.model.generate_content(prompt)
             result_text = response.text.strip()
 
-            # Extract JSON
-            json_match = re.search(r"\{.*\}", result_text, re.DOTALL)
+            # Extract JSON array
+            json_match = re.search(r"\[.*\]", result_text, re.DOTALL)
             if json_match:
-                result = json.loads(json_match.group())
-
-                # Return only the three fields you want
-                if result.get("question_found"):
-                    return {
-                        "standard_question": standard_question,
-                        "found_question": result.get("pdf_question_text", ""),
-                        "answer": result.get("answer_text", "")
-                    }
-                else:
-                    return {
-                        "standard_question": standard_question,
-                        "found_question": "",
-                        "answer": ""
-                    }
-
+                batch_results = json.loads(json_match.group())
+                
+                # Convert to our format
+                formatted_results = []
+                for i, result in enumerate(batch_results):
+                    if i < len(questions_batch):  # Safety check
+                        formatted_results.append({
+                            "standard_question": questions_batch[i],
+                            "found_question": result.get("pdf_question_text", "") if result.get("question_found") else "",
+                            "answer": result.get("answer_text", "") if result.get("question_found") else ""
+                        })
+                    
+                return formatted_results
+            else:
+                print(f"❌ Could not parse JSON from batch {batch_index + 1}")
+                
         except Exception as e:
             error_msg = str(e).lower()
-            print(f"❌ Error processing Q{question_index + 1}: {e}")
+            print(f"❌ Error processing batch {batch_index + 1}: {e}")
             
-            # Handle specific rate limiting errors
-            if 'quota' in error_msg or 'rate limit' in error_msg or 'too many requests' in error_msg:
-                print(f"⚠️  Rate limit detected, waiting extra time...")
-                time.sleep(5)  # Wait 5 seconds on rate limit error
+            # Handle specific errors
+            if 'quota' in error_msg or 'rate limit' in error_msg:
+                print(f"⚠️  API quota/rate limit detected, waiting longer...")
+                time.sleep(10)
             else:
-                time.sleep(2)  # Wait 2 seconds on other errors
+                time.sleep(3)
 
-        # Return empty result on failure
-        return {
-            "standard_question": standard_question,
+        # Return empty results for failed batch
+        return [{
+            "standard_question": q,
             "found_question": "",
             "answer": ""
-        }
+        } for q in questions_batch]
 
     def process_pdf_efficiently(self, pdf_path: str, question_file: str) -> Dict:
-        """Process PDF efficiently - one question at a time with rate limiting"""
+        """Process PDF efficiently using batch processing to minimize API calls"""
 
         start_time = datetime.now()
 
@@ -199,30 +191,37 @@ Rules:
             return {"error": "No content extracted from PDF"}
 
         total_questions = len(questions)
-        estimated_time_minutes = (total_questions * self.request_interval) / 60
+        num_batches = (total_questions + self.batch_size - 1) // self.batch_size  # Ceiling division
         
-        print(f"📊 Processing {total_questions} questions with rate limiting...")
-        print(f"⏱️  Estimated completion time: {estimated_time_minutes:.1f} minutes")
-        print(f"🔄 Rate limit: {self.requests_per_minute} requests/minute ({self.request_interval:.1f}s interval)")
+        print(f"📊 Processing {total_questions} questions in {num_batches} batches")
+        print(f"📦 Batch size: {self.batch_size} questions per request")
+        print(f"⏱️  Estimated time: ~{num_batches * self.request_delay:.0f} seconds")
 
-        # Process questions one by one
-        results = []
+        # Process questions in batches
+        all_results = []
         successful_matches = 0
 
-        for i, question in enumerate(questions):
-            progress_percent = ((i + 1) / total_questions) * 100
-            elapsed_time = (datetime.now() - start_time).total_seconds()
+        for batch_idx in range(num_batches):
+            start_idx = batch_idx * self.batch_size
+            end_idx = min(start_idx + self.batch_size, total_questions)
+            batch_questions = questions[start_idx:end_idx]
             
-            print(f"📋 Q{i+1}/{total_questions} ({progress_percent:.1f}%) - Elapsed: {elapsed_time:.1f}s")
-
-            result = self.find_and_answer_question(question, pdf_content, i)
-            results.append(result)
-
-            if result["found_question"]:  # Check if found_question is not empty
-                successful_matches += 1
-                print(f"  ✅ Found & answered")
-            else:
-                print(f"  ❌ Not found")
+            progress_percent = ((batch_idx + 1) / num_batches) * 100
+            print(f"� Batch {batch_idx + 1}/{num_batches} ({progress_percent:.1f}%) - Questions {start_idx + 1}-{end_idx}")
+            
+            # Process this batch
+            batch_results = self.process_questions_batch(batch_questions, pdf_content, batch_idx)
+            all_results.extend(batch_results)
+            
+            # Count successful matches in this batch
+            batch_matches = sum(1 for r in batch_results if r["found_question"])
+            successful_matches += batch_matches
+            
+            print(f"  ✅ Batch completed: {batch_matches}/{len(batch_questions)} questions found")
+            
+            # Wait between batches (except for the last one)
+            if batch_idx < num_batches - 1:
+                self._wait_between_batches()
 
         # Compile results
         processing_time = (datetime.now() - start_time).total_seconds()
@@ -236,17 +235,19 @@ Rules:
                 "success_rate": (
                     (successful_matches / len(questions)) * 100 if questions else 0
                 ),
-                "rate_limit_info": {
-                    "requests_per_minute": self.requests_per_minute,
-                    "request_interval_seconds": self.request_interval,
-                    "actual_processing_minutes": processing_time / 60
+                "batch_info": {
+                    "batch_size": self.batch_size,
+                    "total_batches": num_batches,
+                    "api_requests_made": num_batches,
+                    "requests_saved": total_questions - num_batches
                 }
             },
-            "results": results,
+            "results": all_results,
         }
 
-        print(f"✅ Completed in {processing_time/60:.1f} minutes")
+        print(f"✅ Completed in {processing_time:.1f} seconds ({processing_time/60:.1f} minutes)")
         print(f"📊 Results: {successful_matches}/{len(questions)} questions found ({final_results['summary']['success_rate']:.1f}%)")
+        print(f"🎯 Efficiency: Used {num_batches} API requests instead of {total_questions} (saved {total_questions - num_batches} requests!)")
 
         return final_results
 

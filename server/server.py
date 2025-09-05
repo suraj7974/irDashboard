@@ -119,12 +119,12 @@ async def process_pdf(file: UploadFile = File(...)):
             try:
                 gemini_api_key = os.getenv('GEMINI_API_KEY')
                 if gemini_api_key:
-                    # Get rate limit from environment or use default of 15 RPM
-                    rate_limit = int(os.getenv('GEMINI_RPM_LIMIT', '15'))
-                    print(f"🔧 Using Gemini rate limit: {rate_limit} requests per minute")
+                    # Get batch size from environment or use default of 10 questions per batch
+                    batch_size = int(os.getenv('GEMINI_BATCH_SIZE', '10'))
+                    print(f"🔧 Using Gemini batch processing: {batch_size} questions per request")
                     
-                    # Initialize processor with rate limiting
-                    processor = EfficientLLMProcessor(api_key=gemini_api_key, requests_per_minute=rate_limit)
+                    # Initialize processor with batch processing
+                    processor = EfficientLLMProcessor(api_key=gemini_api_key, batch_size=batch_size)
                     questions_file_path = os.path.join("questions", "questions.txt")
                     questions_analysis = processor.process_pdf_efficiently(temp_path, questions_file_path)
                     print(f"✅ Questions analysis completed successfully")

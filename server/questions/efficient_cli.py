@@ -12,7 +12,7 @@ from efficient_llm_processor import EfficientLLMProcessor
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Efficient PDF Question-Answer Processor with Rate Limiting"
+        description="Efficient PDF Question-Answer Processor with Batch Processing"
     )
     parser.add_argument("pdf_file", help="Path to PDF file")
     parser.add_argument(
@@ -27,10 +27,10 @@ def main():
         "--api-key", help="Gemini API key (can also use GEMINI_API_KEY env var)"
     )
     parser.add_argument(
-        "--rpm", 
+        "--batch-size", 
         type=int, 
-        default=15, 
-        help="Requests per minute limit (default: 15)"
+        default=10, 
+        help="Number of questions per batch request (default: 10)"
     )
 
     args = parser.parse_args()
@@ -45,13 +45,13 @@ def main():
         return 1
 
     try:
-        # Initialize processor with rate limiting
-        processor = EfficientLLMProcessor(api_key=args.api_key, requests_per_minute=args.rpm)
+        # Initialize processor with batch processing
+        processor = EfficientLLMProcessor(api_key=args.api_key, batch_size=args.batch_size)
 
         # Process PDF
         print(f"📄 Processing: {args.pdf_file}")
         print(f"❓ Questions: {args.questions}")
-        print(f"⏱️  Rate Limit: {args.rpm} requests/minute")
+        print(f"📦 Batch Size: {args.batch_size} questions per request")
         print("=" * 50)
 
         results = processor.process_pdf_efficiently(args.pdf_file, args.questions)
