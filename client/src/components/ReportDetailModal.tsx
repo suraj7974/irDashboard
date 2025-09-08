@@ -63,7 +63,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
   }, [report]);
 
   // Debug log to see the actual data structure
-  console.log("Report metadata:", metadata);
+  // console.log("Report metadata:", metadata);
 
   // Handle both the expected structure and the actual data structure
   const getData = (key: string, altKey?: string) => {
@@ -105,32 +105,32 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
   const startEditingActivity = useCallback((activityIndex: number, activity: any) => {
     setEditingActivityIndex(activityIndex);
     setEditingField(`activity_${activityIndex}`);
-    setEditValues((prev: any) => ({ 
-      ...prev, 
+    setEditValues((prev: any) => ({
+      ...prev,
       [`activity_${activityIndex}_sr_no`]: activity.sr_no || "",
       [`activity_${activityIndex}_incident`]: activity.incident || "",
       [`activity_${activityIndex}_year`]: activity.year || "",
-      [`activity_${activityIndex}_location`]: activity.location || ""
+      [`activity_${activityIndex}_location`]: activity.location || "",
     }));
   }, []);
 
   const startEditingEncounter = useCallback((encounterIndex: number, encounter: any) => {
     setEditingEncounterIndex(encounterIndex);
     setEditingField(`encounter_${encounterIndex}`);
-    setEditValues((prev: any) => ({ 
-      ...prev, 
+    setEditValues((prev: any) => ({
+      ...prev,
       [`encounter_${encounterIndex}_year`]: encounter.year || "",
-      [`encounter_${encounterIndex}_encounter_details`]: encounter.encounter_details || ""
+      [`encounter_${encounterIndex}_encounter_details`]: encounter.encounter_details || "",
     }));
   }, []);
 
   const startEditingRoleChange = useCallback((roleChangeIndex: number, roleChange: any) => {
     setEditingRoleChangeIndex(roleChangeIndex);
     setEditingField(`rolechange_${roleChangeIndex}`);
-    setEditValues((prev: any) => ({ 
-      ...prev, 
+    setEditValues((prev: any) => ({
+      ...prev,
       [`rolechange_${roleChangeIndex}_year`]: roleChange.year || "",
-      [`rolechange_${roleChangeIndex}_role`]: roleChange.role || ""
+      [`rolechange_${roleChangeIndex}_role`]: roleChange.role || "",
     }));
   }, []);
 
@@ -176,7 +176,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
             sr_no: editValues[`activity_${activityIndex}_sr_no`],
             incident: editValues[`activity_${activityIndex}_incident`],
             year: editValues[`activity_${activityIndex}_year`],
-            location: editValues[`activity_${activityIndex}_location`]
+            location: editValues[`activity_${activityIndex}_location`],
           };
 
           updateData = {
@@ -191,7 +191,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
           const updatedEncounters = [...(metadata?.police_encounters || [])];
           updatedEncounters[encounterIndex] = {
             year: editValues[`encounter_${encounterIndex}_year`],
-            encounter_details: editValues[`encounter_${encounterIndex}_encounter_details`]
+            encounter_details: editValues[`encounter_${encounterIndex}_encounter_details`],
           };
 
           updateData = {
@@ -206,7 +206,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
           const updatedRoleChanges = [...(metadata?.hierarchical_role_changes || [])];
           updatedRoleChanges[roleChangeIndex] = {
             year: editValues[`rolechange_${roleChangeIndex}_year`],
-            role: editValues[`rolechange_${roleChangeIndex}_role`]
+            role: editValues[`rolechange_${roleChangeIndex}_role`],
           };
 
           updateData = {
@@ -246,7 +246,6 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
           };
         }
 
-        console.log("Updating report with data:", updateData); // Debug log
         const updatedReport = await IRReportAPI.updateReport(localReport.id, updateData);
 
         // Update the local report state immediately
@@ -723,7 +722,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                   className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                                 />
                               </div>
-                              
+
                               <div className="flex items-center space-x-2 pt-2">
                                 <button
                                   onClick={() => saveField(`activity_${index}`)}
@@ -731,7 +730,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                   className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
                                 >
                                   <Save className="h-3 w-3" />
-                                  <span>{saving ? 'Saving...' : 'Save'}</span>
+                                  <span>{saving ? "Saving..." : "Save"}</span>
                                 </button>
                                 <button
                                   onClick={cancelEditing}
@@ -809,7 +808,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                   rows={3}
                                 />
                               </div>
-                              
+
                               <div className="flex items-center space-x-2 pt-2">
                                 <button
                                   onClick={() => saveField(`encounter_${index}`)}
@@ -817,7 +816,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                   className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
                                 >
                                   <Save className="h-3 w-3" />
-                                  <span>{saving ? 'Saving...' : 'Save'}</span>
+                                  <span>{saving ? "Saving..." : "Save"}</span>
                                 </button>
                                 <button
                                   onClick={cancelEditing}
@@ -832,7 +831,9 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                           ) : (
                             <div className="space-y-2">
                               <div className="flex items-center space-x-2">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">{encounter.year}</span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                  {encounter.year}
+                                </span>
                               </div>
                               <div>
                                 <span className="font-medium text-gray-700 text-sm">Details:</span>
@@ -888,7 +889,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                   />
                                 </div>
                               </div>
-                              
+
                               <div className="flex items-center space-x-2 pt-2">
                                 <button
                                   onClick={() => saveField(`rolechange_${index}`)}
@@ -896,7 +897,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                   className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
                                 >
                                   <Save className="h-3 w-3" />
-                                  <span>{saving ? 'Saving...' : 'Save'}</span>
+                                  <span>{saving ? "Saving..." : "Save"}</span>
                                 </button>
                                 <button
                                   onClick={cancelEditing}

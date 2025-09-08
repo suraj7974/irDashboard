@@ -170,9 +170,9 @@ export default function Dashboard() {
         try {
           // Process with parser
           const result = await ParserService.processPDF(file);
-          console.log("Processed result:", result);
+          //console.log("Processed result:", result);
           const summary = ParserService.generateSummary(result.metadata);
-          console.log("Generated summary:", summary);
+          //console.log("Generated summary:", summary);
 
           // Update report with results (no JSON upload needed)
           const updateData = {
@@ -181,10 +181,10 @@ export default function Dashboard() {
             questions_analysis: result.questions_analysis,
             summary,
           };
-          console.log("Update data being sent:", updateData);
+          //console.log("Update data being sent:", updateData);
 
           const updatedReport = await IRReportAPI.updateReport(id, updateData);
-          console.log("Updated report received:", updatedReport);
+          //console.log("Updated report received:", updatedReport);
 
           // Update progress for completion
           setUploadProgress((prev) => prev.map((p, idx) => (idx === i ? { ...p, progress: 100, status: "completed" } : p)));

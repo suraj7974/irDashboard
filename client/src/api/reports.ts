@@ -37,7 +37,7 @@ export class IRReportAPI {
   // Update IR report with parsed data
   static async updateReport(id: string, updates: Partial<IRReport>): Promise<IRReport> {
     try {
-      console.log("Updating report:", id, "with updates:", updates);
+      // console.log("Updating report:", id, "with updates:", updates);
 
       // Handle metadata updates properly
       const processedUpdates = { ...updates };
@@ -62,7 +62,7 @@ export class IRReportAPI {
         throw error;
       }
 
-      console.log("Updated report data:", data);
+      //console.log("Updated report data:", data);
       return data;
     } catch (error) {
       console.error("Failed to update report:", error);
