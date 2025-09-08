@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   X,
@@ -20,23 +20,44 @@ import {
   HelpCircle,
   CheckCircle,
   XCircle,
+  Edit3,
+  Save,
+  RotateCcw,
+  Activity,
+  HardDrive,
+  AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { IRReport } from "../types";
 import PDFViewer from "./PDFViewer";
+import { IRReportAPI } from "../api/reports";
 
 interface ReportDetailModalProps {
-  report: IRReport;
+  report: IRReport | null;
   isOpen: boolean;
   onClose: () => void;
   onDownload: (report: IRReport, type: "pdf") => void;
+  onReportUpdate?: (report: IRReport) => void;
 }
 
-export default function ReportDetailModal({ report, isOpen, onClose, onDownload }: ReportDetailModalProps) {
-  if (!isOpen) return null;
+export default function ReportDetailModal({ report, isOpen, onClose, onDownload, onReportUpdate }: ReportDetailModalProps) {
+  if (!isOpen || !report) return null;
 
-  const { metadata } = report;
+  const [localReport, setLocalReport] = useState<IRReport>(report);
+  const { metadata } = localReport;
   const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
+  const [editValues, setEditValues] = useState<any>({});
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+  // Sync local report state with prop changes
+  useEffect(() => {
+    if (report) {
+      setLocalReport(report);
+    }
+  }, [report]);
 
   // Debug log to see the actual data structure
   console.log("Report metadata:", metadata);
@@ -54,6 +75,246 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
     }
     return null;
   };
+
+  // Helper functions for editing functionality
+  const startEditing = useCallback((fieldKey: string, currentValue: any) => {
+    setEditingField(fieldKey);
+    setEditValues((prev: any) => ({ ...prev, [fieldKey]: currentValue || "" }));
+    // Focus the input after state update
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 0);
+  }, []);
+
+  const startEditingQuestion = useCallback((questionIndex: number, currentAnswer: string) => {
+    setEditingQuestionIndex(questionIndex);
+    setEditingField(`question_${questionIndex}`);
+    setEditValues((prev: any) => ({ ...prev, [`question_${questionIndex}`]: currentAnswer || "" }));
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 0);
+  }, []);
+
+  const cancelEditing = useCallback(() => {
+    setEditingField(null);
+    setEditingQuestionIndex(null);
+    setEditValues({});
+  }, []);
+
+  const saveField = useCallback(async (fieldKey: string) => {
+    if (saving) return;
+    
+    try {
+      setSaving(true);
+      const newValue = editValues[fieldKey];
+
+      let updateData: any = {};
+      
+      if (fieldKey.startsWith('question_')) {
+        // Handle question answer updates
+        const questionIndex = parseInt(fieldKey.split('_')[1]);
+        const updatedResults = [...(localReport.questions_analysis?.results || [])];
+        updatedResults[questionIndex] = {
+          ...updatedResults[questionIndex],
+          answer: newValue
+        };
+        
+        updateData = {
+          questions_analysis: {
+            ...localReport.questions_analysis,
+            results: updatedResults
+          }
+        };
+      } else if (fieldKey.startsWith('metadata.')) {
+        // Handle nested metadata field updates
+        const metadataKey = fieldKey.replace('metadata.', '');
+        let processedValue = newValue;
+        
+        // Handle array fields that are stored as comma-separated or newline-separated strings
+        if (['aliases', 'villages_covered', 'weapons_assets'].includes(metadataKey)) {
+          processedValue = newValue.split(',').map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+        } else if (metadataKey === 'important_points') {
+          processedValue = newValue.split('\n').map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+        }
+        
+        updateData = {
+          metadata: {
+            ...metadata,
+            [metadataKey]: processedValue
+          }
+        };
+      } else {
+        // Handle direct report field updates (like police_station, division, etc.)
+        updateData = {
+          [fieldKey]: newValue
+        };
+      }
+
+      console.log('Updating report with data:', updateData); // Debug log
+      const updatedReport = await IRReportAPI.updateReport(localReport.id, updateData);
+      
+      // Update the local report state immediately
+      setLocalReport(updatedReport);
+      
+      // Update the parent component's state
+      if (onReportUpdate) {
+        onReportUpdate(updatedReport);
+      }
+
+      cancelEditing();
+    } catch (error) {
+      console.error('Failed to save field:', error);
+      alert('Failed to save changes. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }, [editValues, localReport, onReportUpdate, saving]);
+
+  // Editable field component
+  const EditableField = React.memo(({ 
+    fieldKey, 
+    label, 
+    value, 
+    icon: Icon, 
+    multiline = false,
+    type = "text",
+    isTextarea = false,
+    hideLabel = false,
+    placeholder = ""
+  }: { 
+    fieldKey: string; 
+    label: string; 
+    value: any; 
+    icon: any; 
+    multiline?: boolean;
+    type?: string;
+    isTextarea?: boolean;
+    hideLabel?: boolean;
+    placeholder?: string;
+  }) => {
+    const isEditing = editingField === fieldKey;
+    const editValue = editValues[fieldKey] || value || "";
+
+    return (
+      <div className="flex items-start space-x-3">
+        <Icon className="h-5 w-5 text-gray-400 mt-0.5" />
+        <div className="flex-1">
+          {!hideLabel && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-900">{label}</p>
+              {!isEditing && (
+                <button
+                  onClick={() => startEditing(fieldKey, value)}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                  title="Edit field"
+                >
+                  <Edit3 className="h-3 w-3 text-gray-400" />
+                </button>
+              )}
+            </div>
+          )}
+          
+          {hideLabel && !isEditing && (
+            <div className="flex items-center justify-between">
+              <div></div>
+              <button
+                onClick={() => startEditing(fieldKey, value)}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Edit field"
+              >
+                <Edit3 className="h-3 w-3 text-gray-400" />
+              </button>
+            </div>
+          )}
+          
+          {isEditing ? (
+            <div className="mt-1 space-y-2">
+              {(multiline || isTextarea) ? (
+                <textarea
+                  ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                  value={editValue}
+                  onChange={(e) => setEditValues((prev: any) => ({ ...prev, [fieldKey]: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={isTextarea ? 4 : 3}
+                  placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+                  autoFocus
+                />
+              ) : (
+                <input
+                  ref={inputRef as React.RefObject<HTMLInputElement>}
+                  type={type}
+                  value={editValue}
+                  onChange={(e) => setEditValues((prev: any) => ({ ...prev, [fieldKey]: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+                  autoFocus
+                />
+              )}
+              
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => saveField(fieldKey)}
+                  disabled={saving}
+                  className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Save className="h-3 w-3" />
+                  <span>{saving ? 'Saving...' : 'Save'}</span>
+                </button>
+                <button
+                  onClick={cancelEditing}
+                  disabled={saving}
+                  className="flex items-center space-x-1 px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  <span>Cancel</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-1">
+              {value ? (
+                // Handle different field types for display
+                fieldKey === 'metadata.aliases' || fieldKey === 'metadata.villages_covered' || fieldKey === 'metadata.weapons_assets' ? (
+                  <div className="flex flex-wrap gap-2">
+                    {(Array.isArray(value) ? value : String(value).split(',')).map((item: string, index: number) => (
+                      <span key={index} className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        fieldKey === 'metadata.aliases' ? 'bg-blue-100 text-blue-800' :
+                        fieldKey === 'metadata.villages_covered' ? 'bg-green-100 text-green-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {item.trim()}
+                      </span>
+                    ))}
+                  </div>
+                ) : fieldKey === 'metadata.important_points' ? (
+                  <div className="space-y-2">
+                    {(Array.isArray(value) ? value : String(value).split('\n')).map((point: string, index: number) => (
+                      <div key={index} className="flex items-start space-x-2">
+                        <span className="flex-shrink-0 w-2 h-2 bg-yellow-400 rounded-full mt-2"></span>
+                        <p className="text-sm text-gray-700">{point.trim()}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={`text-sm text-gray-600 ${isTextarea ? 'whitespace-pre-wrap bg-gray-50 p-3 rounded border' : ''}`}>
+                    {String(value)}
+                  </p>
+                )
+              ) : (
+                <p className="text-sm text-gray-500 italic">
+                  {hideLabel ? `No ${fieldKey.split('.').pop()?.replace(/_/g, ' ')} available` : "Unknown"}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  });
 
   return (
     <motion.div
@@ -78,7 +339,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">{getData("name", "Name") || "Unknown Subject"}</h2>
-              <p className="text-sm text-gray-500">{report.original_filename}</p>
+              <p className="text-sm text-gray-500">{localReport.original_filename}</p>
             </div>
           </div>
 
@@ -91,7 +352,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
               View PDF
             </button>
             <button
-              onClick={() => onDownload(report, "pdf")}
+              onClick={() => onDownload(localReport, "pdf")}
               className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
             >
               <Download className="w-4 h-4" />
@@ -116,19 +377,19 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Filename:</span>
-                      <span className="text-gray-900">{report.original_filename}</span>
+                      <span className="text-gray-900">{localReport.original_filename}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Upload Date:</span>
-                      <span className="text-gray-900">{format(new Date(report.uploaded_at), "PPP")}</span>
+                      <span className="text-gray-900">{format(new Date(localReport.uploaded_at), "PPP")}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Status:</span>
-                      <span className="text-gray-900 capitalize">{report.status}</span>
+                      <span className="text-gray-900 capitalize">{localReport.status}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">File Size:</span>
-                      <span className="text-gray-900">{(report.file_size / 1024 / 1024).toFixed(2)} MB</span>
+                      <span className="text-gray-900">{(localReport.file_size / 1024 / 1024).toFixed(2)} MB</span>
                     </div>
                   </div>
                 </div>
@@ -136,151 +397,171 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
             ) : (
               <>
                 {/* Administrative Details Section */}
-                {(report.police_station || report.division || report.area_committee || report.uid_for_name || report.rank) && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Administrative Details</h3>
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        {report.police_station && (
-                          <div className="flex items-start space-x-3">
-                            <Building2 className="h-5 w-5 text-blue-600 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">Police Station</p>
-                              <p className="text-sm text-gray-600">{report.police_station}</p>
-                            </div>
-                          </div>
-                        )}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Administrative Details</h3>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <EditableField
+                        fieldKey="police_station"
+                        label="Police Station"
+                        value={localReport.police_station}
+                        icon={Building2}
+                      />
 
-                        {report.division && (
-                          <div className="flex items-start space-x-3">
-                            <MapPin className="h-5 w-5 text-blue-600 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">Division</p>
-                              <p className="text-sm text-gray-600">{report.division}</p>
-                            </div>
-                          </div>
-                        )}
+                      <EditableField
+                        fieldKey="division"
+                        label="Division"
+                        value={localReport.division}
+                        icon={MapPin}
+                      />
 
-                        {report.area_committee && (
-                          <div className="flex items-start space-x-3">
-                            <Users className="h-5 w-5 text-blue-600 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">Area Committee</p>
-                              <p className="text-sm text-gray-600">{report.area_committee}</p>
-                            </div>
-                          </div>
-                        )}
+                      <EditableField
+                        fieldKey="area_committee"
+                        label="Area Committee"
+                        value={localReport.area_committee}
+                        icon={Users}
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <EditableField
+                        fieldKey="uid_for_name"
+                        label="UID for Name"
+                        value={localReport.uid_for_name}
+                        icon={Hash}
+                      />
+
+                      <EditableField
+                        fieldKey="rank"
+                        label="Rank"
+                        value={localReport.rank}
+                        icon={Award}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* File Information */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">File Information</h3>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <EditableField
+                        fieldKey="original_filename"
+                        label="Original Filename"
+                        value={localReport.original_filename}
+                        icon={FileText}
+                      />
+
+                      <EditableField
+                        fieldKey="status"
+                        label="Status"
+                        value={localReport.status}
+                        icon={Activity}
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-start space-x-3">
+                        <Calendar className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Upload Date</p>
+                          <p className="text-sm text-gray-600">
+                            {format(new Date(localReport.uploaded_at), "PPP")}
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="space-y-4">
-                        {report.uid_for_name && (
-                          <div className="flex items-start space-x-3">
-                            <Hash className="h-5 w-5 text-blue-600 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">UID for Name</p>
-                              <p className="text-sm text-gray-600">{report.uid_for_name}</p>
-                            </div>
-                          </div>
-                        )}
-
-                        {report.rank && (
-                          <div className="flex items-start space-x-3">
-                            <Award className="h-5 w-5 text-blue-600 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">Rank</p>
-                              <p className="text-sm text-gray-600">{report.rank}</p>
-                            </div>
-                          </div>
-                        )}
+                      <div className="flex items-start space-x-3">
+                        <HardDrive className="h-5 w-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">File Size</p>
+                          <p className="text-sm text-gray-600">
+                            {(localReport.file_size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
+
+
 
                 {/* Basic Information */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <div className="flex items-start space-x-3">
-                        <User className="h-5 w-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Name</p>
-                          <p className="text-sm text-gray-600">{getData("name", "Name") || "Unknown"}</p>
-                        </div>
-                      </div>
+                      <EditableField
+                        fieldKey="metadata.name"
+                        label="Name"
+                        value={getData("name", "Name")}
+                        icon={User}
+                      />
 
-                      <div className="flex items-start space-x-3">
-                        <Package className="h-5 w-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Supply Team/Supply</p>
-                          <p className="text-sm text-gray-600">{getData("supply_team_supply", "Supply Team/Supply") || "Unknown"}</p>
-                        </div>
-                      </div>
+                      <EditableField
+                        fieldKey="metadata.supply_team_supply"
+                        label="Supply Team/Supply"
+                        value={getData("supply_team_supply", "Supply Team/Supply")}
+                        icon={Package}
+                      />
 
-                      <div className="flex items-start space-x-3">
-                        <Target className="h-5 w-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">IED/Bomb</p>
-                          <p className="text-sm text-gray-600">{getData("ied_bomb", "IED/Bomb") || "Unknown"}</p>
-                        </div>
-                      </div>
+                      <EditableField
+                        fieldKey="metadata.ied_bomb"
+                        label="IED/Bomb"
+                        value={getData("ied_bomb", "IED/Bomb")}
+                        icon={Target}
+                      />
 
-                      <div className="flex items-start space-x-3">
-                        <Users className="h-5 w-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Meeting</p>
-                          <p className="text-sm text-gray-600">{getData("meeting", "Meeting") || "Unknown"}</p>
-                        </div>
-                      </div>
+                      <EditableField
+                        fieldKey="metadata.meeting"
+                        label="Meeting"
+                        value={getData("meeting", "Meeting")}
+                        icon={Users}
+                      />
 
-                      <div className="flex items-start space-x-3">
-                        <Shield className="h-5 w-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Platoon</p>
-                          <p className="text-sm text-gray-600">{getData("platoon", "Platoon") || "Unknown"}</p>
-                        </div>
-                      </div>
+                      <EditableField
+                        fieldKey="metadata.platoon"
+                        label="Platoon"
+                        value={getData("platoon", "Platoon")}
+                        icon={Shield}
+                      />
 
-                      <div className="flex items-start space-x-3">
-                        <Shield className="h-5 w-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Group/Battalion</p>
-                          <p className="text-sm text-gray-600">{getData("group_battalion", "Group/Battalion") || "Unknown"}</p>
-                        </div>
-                      </div>
+                      <EditableField
+                        fieldKey="metadata.group_battalion"
+                        label="Group/Battalion"
+                        value={getData("group_battalion", "Group/Battalion")}
+                        icon={Shield}
+                      />
 
-                      <div className="flex items-start space-x-3">
-                        <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Area/Region</p>
-                          <p className="text-sm text-gray-600">{getData("area_region", "Area/Region") || "Unknown"}</p>
-                        </div>
-                      </div>
+                      <EditableField
+                        fieldKey="metadata.area_region"
+                        label="Area/Region"
+                        value={getData("area_region", "Area/Region")}
+                        icon={MapPin}
+                      />
                     </div>
 
                     <div className="space-y-4">
-                      <div className="flex items-start space-x-3">
-                        <Zap className="h-5 w-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Bounty</p>
-                          <p className="text-sm text-gray-600">{getData("bounty", "Bounty") || "Unknown"}</p>
-                        </div>
-                      </div>
+                      <EditableField
+                        fieldKey="metadata.bounty"
+                        label="Bounty"
+                        value={getData("bounty", "Bounty")}
+                        icon={Zap}
+                      />
 
-                      <div className="flex items-start space-x-3">
-                        <Clock className="h-5 w-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Organizational Period</p>
-                          <p className="text-sm text-gray-600">{getData("organizational_period", "Organizational Period") || "Unknown"}</p>
-                        </div>
-                      </div>
+                      <EditableField
+                        fieldKey="metadata.organizational_period"
+                        label="Organizational Period"
+                        value={getData("organizational_period", "Organizational Period")}
+                        icon={Clock}
+                      />
 
                       <div className="flex items-start space-x-3">
                         <Calendar className="h-5 w-5 text-gray-400 mt-0.5" />
                         <div>
                           <p className="text-sm font-medium text-gray-900">Upload Date</p>
-                          <p className="text-sm text-gray-600">{format(new Date(report.uploaded_at), "PPP")}</p>
+                          <p className="text-sm text-gray-600">{format(new Date(localReport.uploaded_at), "PPP")}</p>
                         </div>
                       </div>
                     </div>
@@ -338,64 +619,83 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                 </div>
 
                 {/* Summary */}
-                {report.summary && (
+                {(localReport.summary || editingField === 'summary') && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Summary</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-lg">{report.summary}</p>
+                    <EditableField
+                      fieldKey="summary"
+                      label=""
+                      value={localReport.summary || ""}
+                      icon={FileText}
+                      isTextarea={true}
+                      hideLabel={true}
+                    />
                   </div>
                 )}
 
                 {/* Aliases */}
-                {(getData("aliases", "Aliases") || getData("aliases", "उपनाम")) && (
+                {((getData("aliases", "Aliases") || getData("aliases", "उपनाम")) || editingField === 'metadata.aliases') && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Aliases</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {(Array.isArray(getData("aliases", "Aliases"))
-                        ? getData("aliases", "Aliases")
-                        : typeof getData("aliases", "Aliases") === "string"
-                        ? [getData("aliases", "Aliases")]
-                        : ([] as string[])
-                      ).map((alias: string, index: number) => (
-                        <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {alias}
-                        </span>
-                      ))}
-                    </div>
+                    <EditableField
+                      fieldKey="metadata.aliases"
+                      label=""
+                      value={Array.isArray(getData("aliases", "Aliases")) 
+                        ? (getData("aliases", "Aliases") as string[]).join(", ")
+                        : (getData("aliases", "Aliases") as string) || ""
+                      }
+                      icon={Users}
+                      hideLabel={true}
+                      placeholder="Enter aliases separated by commas"
+                    />
                   </div>
                 )}
 
                 {/* Villages Covered */}
-                {(getData("villages_covered", "Villages Covered") || getData("villages_covered", "गांव")) && (
+                {((getData("villages_covered", "Villages Covered") || getData("villages_covered", "गांव")) || editingField === 'metadata.villages_covered') && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Villages Covered</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {(Array.isArray(getData("villages_covered", "Villages Covered"))
-                        ? getData("villages_covered", "Villages Covered")
-                        : typeof getData("villages_covered", "Villages Covered") === "string"
-                        ? [getData("villages_covered", "Villages Covered")]
-                        : ([] as string[])
-                      ).map((village: string, index: number) => (
-                        <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {village}
-                        </span>
-                      ))}
-                    </div>
+                    <EditableField
+                      fieldKey="metadata.villages_covered"
+                      label=""
+                      value={Array.isArray(getData("villages_covered", "Villages Covered")) 
+                        ? (getData("villages_covered", "Villages Covered") as string[]).join(", ")
+                        : (getData("villages_covered", "Villages Covered") as string) || ""
+                      }
+                      icon={MapPin}
+                      hideLabel={true}
+                      placeholder="Enter villages separated by commas"
+                    />
                   </div>
                 )}
 
                 {/* Additional Information */}
                 <div className="space-y-6">
-                  {getData("involvement", "Involvement") && (
+                  {(getData("involvement", "Involvement") || editingField === 'metadata.involvement') && (
                     <div>
                       <h4 className="text-md font-medium text-gray-900 mb-2">Involvement</h4>
-                      <p className="text-sm text-gray-600 leading-relaxed">{getData("involvement", "Involvement")}</p>
+                      <EditableField
+                        fieldKey="metadata.involvement"
+                        label=""
+                        value={getData("involvement", "Involvement") || ""}
+                        icon={User}
+                        isTextarea={true}
+                        hideLabel={true}
+                      />
                     </div>
                   )}
 
-                  {getData("history", "History") && (
+                  {(getData("history", "History") || editingField === 'metadata.history') && (
                     <div>
                       <h4 className="text-md font-medium text-gray-900 mb-2">History</h4>
-                      <p className="text-sm text-gray-600 leading-relaxed">{getData("history", "History")}</p>
+                      <EditableField
+                        fieldKey="metadata.history"
+                        label=""
+                        value={getData("history", "History") || ""}
+                        icon={Clock}
+                        isTextarea={true}
+                        hideLabel={true}
+                      />
                     </div>
                   )}
                 </div>
@@ -472,48 +772,50 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                 )}
 
                 {/* Weapons/Assets */}
-                {metadata.weapons_assets && metadata.weapons_assets.length > 0 && (
+                {((metadata.weapons_assets && metadata.weapons_assets.length > 0) || editingField === 'metadata.weapons_assets') && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Weapons/Assets</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {metadata.weapons_assets.map((weapon, index) => (
-                        <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                          {weapon}
-                        </span>
-                      ))}
-                    </div>
+                    <EditableField
+                      fieldKey="metadata.weapons_assets"
+                      label=""
+                      value={metadata.weapons_assets ? metadata.weapons_assets.join(", ") : ""}
+                      icon={Shield}
+                      hideLabel={true}
+                      placeholder="Enter weapons/assets separated by commas"
+                    />
                   </div>
                 )}
 
                 {/* Important Points */}
-                {metadata.important_points && metadata.important_points.length > 0 && (
+                {((metadata.important_points && metadata.important_points.length > 0) || editingField === 'metadata.important_points') && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Important Points</h3>
-                    <div className="space-y-2">
-                      {metadata.important_points.map((point, index) => (
-                        <div key={index} className="flex items-start space-x-2">
-                          <span className="flex-shrink-0 w-2 h-2 bg-yellow-400 rounded-full mt-2"></span>
-                          <p className="text-sm text-gray-700">{point}</p>
-                        </div>
-                      ))}
-                    </div>
+                    <EditableField
+                      fieldKey="metadata.important_points"
+                      label=""
+                      value={metadata.important_points ? metadata.important_points.join("\n") : ""}
+                      icon={AlertCircle}
+                      isTextarea={true}
+                      hideLabel={true}
+                      placeholder="Enter important points, one per line"
+                    />
                   </div>
                 )}
 
                 {/* Questions Analysis */}
-                {report.questions_analysis && (
+                {localReport.questions_analysis && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                       <HelpCircle className="h-5 w-5 mr-2" />
                       Standard Questions
                     </h3>
 
-                    {report.questions_analysis.success ? (
+                    {localReport.questions_analysis.success ? (
                       <>
                         {/* Questions and Answers */}
-                        {report.questions_analysis.results.length > 0 ? (
+                        {localReport.questions_analysis.results.length > 0 ? (
                           <div className="space-y-4 max-h-96 overflow-y-auto">
-                            {report.questions_analysis.results.map((result, index) => {
+                            {localReport.questions_analysis.results.map((result, index) => {
                               // Questions 28-40 should display as tables (index 27-39 since array is 0-based)
                               const questionNumber = index + 1;
                               const shouldShowAsTable = questionNumber >= 28 && questionNumber <= 40;
@@ -544,33 +846,77 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                                   </div>
 
                                   <div>
-                                    {result.answer && result.answer.trim() !== "" ? (
-                                      shouldShowAsTable ? (
-                                        <div className="bg-white rounded border border-gray-300 overflow-x-auto">
-                                          <table className="min-w-full divide-y divide-gray-200">
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                              {tableData.map((row, rowIndex) => (
-                                                <tr key={rowIndex} className={rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                                                  {row.map((cell, cellIndex) => (
-                                                    <td key={cellIndex} className="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 last:border-r-0">
-                                                      {cell || "-"}
-                                                    </td>
-                                                  ))}
-                                                </tr>
-                                              ))}
-                                            </tbody>
-                                          </table>
-                                          <div className="px-3 py-2 bg-gray-100 text-xs text-gray-500 border-t border-gray-200">
-                                            {tableData.length} row{tableData.length !== 1 ? "s" : ""} found
-                                          </div>
+                                    <div className="flex items-start justify-between mb-2">
+                                      <span className="text-xs font-medium text-gray-600">Answer:</span>
+                                      {!((editingQuestionIndex === index && editingField === `question_${index}`)) && (
+                                        <button
+                                          onClick={() => startEditingQuestion(index, result.answer || "")}
+                                          className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                          title="Edit answer"
+                                        >
+                                          <Edit3 className="h-3 w-3 text-gray-400" />
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {(editingQuestionIndex === index && editingField === `question_${index}`) ? (
+                                      <div className="space-y-2">
+                                        <textarea
+                                          value={editValues[`question_${index}`] || ""}
+                                          onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`question_${index}`]: e.target.value }))}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                          rows={shouldShowAsTable ? 8 : 4}
+                                          placeholder="Enter answer..."
+                                        />
+                                        
+                                        <div className="flex items-center space-x-2">
+                                          <button
+                                            onClick={() => saveField(`question_${index}`)}
+                                            disabled={saving}
+                                            className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
+                                          >
+                                            <Save className="h-3 w-3" />
+                                            <span>{saving ? 'Saving...' : 'Save'}</span>
+                                          </button>
+                                          <button
+                                            onClick={cancelEditing}
+                                            disabled={saving}
+                                            className="flex items-center space-x-1 px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400"
+                                          >
+                                            <RotateCcw className="h-3 w-3" />
+                                            <span>Cancel</span>
+                                          </button>
                                         </div>
-                                      ) : (
-                                        <p className="text-sm text-gray-700 bg-white p-3 rounded border border-gray-300 whitespace-pre-wrap">{result.answer}</p>
-                                      )
+                                      </div>
                                     ) : (
-                                      <p className="text-sm text-gray-500 bg-gray-100 p-3 rounded border border-gray-300 italic">
-                                        No answer found in the document
-                                      </p>
+                                      result.answer && result.answer.trim() !== "" ? (
+                                        shouldShowAsTable ? (
+                                          <div className="bg-white rounded border border-gray-300 overflow-x-auto">
+                                            <table className="min-w-full divide-y divide-gray-200">
+                                              <tbody className="bg-white divide-y divide-gray-200">
+                                                {tableData.map((row, rowIndex) => (
+                                                  <tr key={rowIndex} className={rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                                                    {row.map((cell, cellIndex) => (
+                                                      <td key={cellIndex} className="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 last:border-r-0">
+                                                        {cell || "-"}
+                                                      </td>
+                                                    ))}
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                            <div className="px-3 py-2 bg-gray-100 text-xs text-gray-500 border-t border-gray-200">
+                                              {tableData.length} row{tableData.length !== 1 ? "s" : ""} found
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <p className="text-sm text-gray-700 bg-white p-3 rounded border border-gray-300 whitespace-pre-wrap">{result.answer}</p>
+                                        )
+                                      ) : (
+                                        <p className="text-sm text-gray-500 bg-gray-100 p-3 rounded border border-gray-300 italic">
+                                          No answer found in the document
+                                        </p>
+                                      )
                                     )}
                                   </div>
                                 </div>
@@ -581,7 +927,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                           <div className="text-center py-8 text-gray-500">
                             <HelpCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                             <p>No questions were processed from this document.</p>
-                            <p className="text-xs mt-2">Total questions processed: {report.questions_analysis.summary.total_questions}</p>
+                            <p className="text-xs mt-2">Total questions processed: {localReport.questions_analysis.summary.total_questions}</p>
                           </div>
                         )}
                       </>
@@ -591,7 +937,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                           <XCircle className="h-5 w-5 text-red-600 mr-2" />
                           <div>
                             <p className="text-sm font-medium text-red-900">Questions analysis failed</p>
-                            {report.questions_analysis.error && <p className="text-sm text-red-700 mt-1">{report.questions_analysis.error}</p>}
+                            {localReport.questions_analysis.error && <p className="text-sm text-red-700 mt-1">{localReport.questions_analysis.error}</p>}
                           </div>
                         </div>
                       </div>
@@ -599,8 +945,8 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                   </div>
                 )}
 
-                {showPDFViewer && report.file_url && (
-                  <PDFViewer fileUrl={report.file_url} onClose={() => setShowPDFViewer(false)} title={report.original_filename} />
+                {showPDFViewer && localReport.file_url && (
+                  <PDFViewer fileUrl={localReport.file_url} onClose={() => setShowPDFViewer(false)} title={localReport.original_filename} />
                 )}
               </>
             )}

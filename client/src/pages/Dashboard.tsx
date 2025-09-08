@@ -351,7 +351,13 @@ export default function Dashboard() {
       {/* Detail Modal */}
       <AnimatePresence>
         {showDetailModal && selectedReport && (
-          <ReportDetailModal report={selectedReport} isOpen={showDetailModal} onClose={() => setShowDetailModal(false)} onDownload={handleDownload} />
+          <ReportDetailModal
+            report={selectedReport}
+            isOpen={showDetailModal}
+            onClose={() => setShowDetailModal(false)}
+            onDownload={handleDownload}
+            onReportUpdate={handleReportUpdate}
+          />
         )}
       </AnimatePresence>
     </div>

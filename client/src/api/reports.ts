@@ -36,18 +36,38 @@ export class IRReportAPI {
 
   // Update IR report with parsed data
   static async updateReport(id: string, updates: Partial<IRReport>): Promise<IRReport> {
-    console.log("updateReport called with id:", id);
-    console.log("updateReport called with updates:", updates);
+    try {
+      console.log("Updating report:", id, "with updates:", updates);
 
-    const { data, error } = await supabase.from(TABLES.IR_REPORTS).update(updates).eq("id", id).select().single();
+      // Handle metadata updates properly
+      const processedUpdates = { ...updates };
 
-    if (error) {
-      console.error("Supabase update error:", error);
-      throw new Error(`Update failed: ${error.message}`);
+      // If updating metadata, we need to merge with existing metadata
+      if (updates.metadata) {
+        // Get current report to merge metadata
+        const { data: currentReport } = await supabase.from(TABLES.IR_REPORTS).select("metadata").eq("id", id).single();
+
+        if (currentReport) {
+          processedUpdates.metadata = {
+            ...currentReport.metadata,
+            ...updates.metadata,
+          };
+        }
+      }
+
+      const { data, error } = await supabase.from(TABLES.IR_REPORTS).update(processedUpdates).eq("id", id).select().single();
+
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw error;
+      }
+
+      console.log("Updated report data:", data);
+      return data;
+    } catch (error) {
+      console.error("Failed to update report:", error);
+      throw error;
     }
-
-    console.log("Supabase update successful, returned data:", data);
-    return data;
   }
 
   // Upload profile image to S3 (ir-images bucket)
@@ -69,7 +89,7 @@ export class IRReportAPI {
     } = supabase.storage.from(STORAGE_BUCKETS.IR_IMAGES).getPublicUrl(fileName);
 
     // Update the report with the profile image URL
-    await this.updateReport(reportId, { profile_image_url: publicUrl });
+    await IRReportAPI.updateReport(reportId, { profile_image_url: publicUrl });
 
     return publicUrl;
   }
@@ -103,7 +123,7 @@ export class IRReportAPI {
     const updatedAdditionalImages = [...currentAdditionalImages, publicUrl];
 
     // Update the report with the new additional images array
-    await this.updateReport(reportId, { additional_images: updatedAdditionalImages });
+    await IRReportAPI.updateReport(reportId, { additional_images: updatedAdditionalImages });
 
     return publicUrl;
   }
@@ -126,11 +146,11 @@ export class IRReportAPI {
     if (!report) return;
 
     if (isProfileImage) {
-      await this.updateReport(reportId, { profile_image_url: undefined });
+      await IRReportAPI.updateReport(reportId, { profile_image_url: undefined });
     } else {
       const currentAdditionalImages = report.additional_images || [];
       const updatedAdditionalImages = currentAdditionalImages.filter((url) => url !== imageUrl);
-      await this.updateReport(reportId, { additional_images: updatedAdditionalImages });
+      await IRReportAPI.updateReport(reportId, { additional_images: updatedAdditionalImages });
     }
   }
 
