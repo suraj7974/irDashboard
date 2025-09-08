@@ -36,8 +36,8 @@ export class IRReportAPI {
 
   // Update IR report with parsed data
   static async updateReport(id: string, updates: Partial<IRReport>): Promise<IRReport> {
-    console.log("updateReport called with id:", id);
-    console.log("updateReport called with updates:", updates);
+    //console.log("updateReport called with id:", id);
+    //console.log("updateReport called with updates:", updates);
 
     const { data, error } = await supabase.from(TABLES.IR_REPORTS).update(updates).eq("id", id).select().single();
 

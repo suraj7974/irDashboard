@@ -21,7 +21,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
   const { metadata } = report;
 
   // Debug log to see the actual data structure
-  console.log("Report metadata:", metadata);
+  //console.log("Report metadata:", metadata);
 
   // Handle both the expected structure and the actual data structure
   const getData = (key: string, altKey?: string) => {
@@ -274,56 +274,6 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                   </div>
                 </div>
 
-                {/* All Available Data */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">All Available Information</h3>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {metadata &&
-                        Object.entries(metadata).map(([key, value]) => {
-                          if (!value || (Array.isArray(value) && value.length === 0)) return null;
-
-                          // Function to render complex array values
-                          const renderValue = () => {
-                            if (Array.isArray(value)) {
-                              // Handle arrays of objects (like criminal_activities, police_encounters, etc.)
-                              if (value.length > 0 && typeof value[0] === "object") {
-                                return (
-                                  <div className="space-y-2">
-                                    {value.map((item, index) => (
-                                      <div key={index} className="bg-white p-2 rounded border text-xs">
-                                        {Object.entries(item).map(([itemKey, itemValue]) => (
-                                          <div key={itemKey} className="flex justify-between">
-                                            <span className="font-medium text-gray-500">{itemKey.replace(/_/g, " ")}:</span>
-                                            <span className="text-gray-700">{String(itemValue)}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    ))}
-                                  </div>
-                                );
-                              } else {
-                                // Handle arrays of strings
-                                return <span>{value.join(", ")}</span>;
-                              }
-                            } else if (typeof value === "object") {
-                              return <pre className="text-xs bg-white p-2 rounded border overflow-x-auto">{JSON.stringify(value, null, 2)}</pre>;
-                            } else {
-                              return <span>{String(value)}</span>;
-                            }
-                          };
-
-                          return (
-                            <div key={key} className="border-b border-gray-200 pb-2">
-                              <p className="text-sm font-medium text-gray-900 capitalize">{key.replace(/_/g, " ")}:</p>
-                              <div className="text-sm text-gray-600 mt-1">{renderValue()}</div>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                </div>
-
                 {/* Aliases */}
                 {(getData("aliases", "Aliases") || getData("aliases", "उपनाम")) && (
                   <div>
@@ -513,24 +463,76 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                         {/* Questions and Answers */}
                         {report.questions_analysis.results.length > 0 ? (
                           <div className="space-y-4 max-h-96 overflow-y-auto">
-                            {report.questions_analysis.results.map((result, index) => (
-                              <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                <div className="mb-3">
-                                  <h4 className="font-medium text-gray-900 text-sm mb-1">Question:</h4>
-                                  <p className="text-sm text-blue-700 bg-blue-50 p-2 rounded border">{result.standard_question}</p>
-                                </div>
+                            {report.questions_analysis.results.map((result, index) => {
+                              // Questions 28-40 should display as tables (index 27-39 since array is 0-based)
+                              const questionNumber = index + 1;
+                              const shouldShowAsTable = questionNumber >= 28 && questionNumber <= 40;
 
-                                <div>
-                                  {result.answer && result.answer.trim() !== "" ? (
-                                    <p className="text-sm text-gray-700 bg-white p-3 rounded border border-gray-300 whitespace-pre-wrap">{result.answer}</p>
-                                  ) : (
-                                    <p className="text-sm text-gray-500 bg-gray-100 p-3 rounded border border-gray-300 italic">
-                                      No answer found in the document
-                                    </p>
-                                  )}
+                              // Function to parse tabular data for questions 28-40
+                              const parseTabularData = (answer: string) => {
+                                const rows = answer.split("\n").filter((row) => row.trim());
+                                return rows.map((row) => {
+                                  // Split by common delimiters: |, tab, or comma
+                                  if (row.includes("|")) {
+                                    return row.split("|").map((cell) => cell.trim());
+                                  } else if (row.includes("\t")) {
+                                    return row.split("\t").map((cell) => cell.trim());
+                                  } else if (row.includes(",")) {
+                                    return row.split(",").map((cell) => cell.trim());
+                                  } else {
+                                    return [row.trim()];
+                                  }
+                                });
+                              };
+
+                              const tableData = shouldShowAsTable && result.answer ? parseTabularData(result.answer) : [];
+
+                              return (
+                                <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                  <div className="mb-3">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <h4 className="font-medium text-gray-900 text-sm">Question {questionNumber}:</h4>
+                                      {shouldShowAsTable && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Table Format</span>}
+                                    </div>
+                                    <p className="text-sm text-blue-700 bg-blue-50 p-2 rounded border">{result.standard_question}</p>
+                                  </div>
+
+                                  <div>
+                                    <span className="text-xs font-medium text-gray-600">Answer:</span>
+                                    {result.answer && result.answer.trim() !== "" ? (
+                                      shouldShowAsTable ? (
+                                        <div className="mt-2 bg-white rounded border border-gray-300 overflow-x-auto">
+                                          <table className="min-w-full divide-y divide-gray-200">
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                              {tableData.map((row, rowIndex) => (
+                                                <tr key={rowIndex} className={rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                                                  {row.map((cell, cellIndex) => (
+                                                    <td key={cellIndex} className="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 last:border-r-0">
+                                                      {cell || "-"}
+                                                    </td>
+                                                  ))}
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                          <div className="px-3 py-2 bg-gray-100 text-xs text-gray-500 border-t border-gray-200">
+                                            {tableData.length} row{tableData.length !== 1 ? "s" : ""} found
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <p className="mt-2 text-sm text-gray-700 bg-white p-3 rounded border border-gray-300 whitespace-pre-wrap">
+                                          {result.answer}
+                                        </p>
+                                      )
+                                    ) : (
+                                      <p className="mt-2 text-sm text-gray-500 bg-gray-100 p-3 rounded border border-gray-300 italic">
+                                        No answer found in the document
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         ) : (
                           <div className="text-center py-8 text-gray-500">
