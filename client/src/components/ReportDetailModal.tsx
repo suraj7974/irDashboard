@@ -82,7 +82,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
   // Helper functions for editing functionality
   const startEditing = useCallback((fieldKey: string, currentValue: any) => {
     setEditingField(fieldKey);
-    setEditValues((prev: any) => ({ ...prev, [fieldKey]: currentValue || "" }));
+    setEditValues((prev: any) => ({ ...prev, [fieldKey]: currentValue != null ? currentValue : "" }));
     // Focus the input after state update
     setTimeout(() => {
       if (inputRef.current) {
@@ -94,7 +94,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
   const startEditingQuestion = useCallback((questionIndex: number, currentAnswer: string) => {
     setEditingQuestionIndex(questionIndex);
     setEditingField(`question_${questionIndex}`);
-    setEditValues((prev: any) => ({ ...prev, [`question_${questionIndex}`]: currentAnswer || "" }));
+    setEditValues((prev: any) => ({ ...prev, [`question_${questionIndex}`]: currentAnswer != null ? currentAnswer : "" }));
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
@@ -291,7 +291,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
       placeholder?: string;
     }) => {
       const isEditing = editingField === fieldKey;
-      const editValue = editValues[fieldKey] || value || "";
+      const editValue = editValues[fieldKey] !== undefined ? editValues[fieldKey] : (value || "");
 
       return (
         <div className="flex items-start space-x-3">
@@ -689,7 +689,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                   <label className="block text-xs font-medium text-gray-700 mb-1">Sr. No.</label>
                                   <input
                                     type="text"
-                                    value={editValues[`activity_${index}_sr_no`] || ""}
+                                    value={editValues[`activity_${index}_sr_no`] !== undefined ? editValues[`activity_${index}_sr_no`] : ""}
                                     onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`activity_${index}_sr_no`]: e.target.value }))}
                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                                   />
@@ -698,7 +698,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                   <label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
                                   <input
                                     type="text"
-                                    value={editValues[`activity_${index}_year`] || ""}
+                                    value={editValues[`activity_${index}_year`] !== undefined ? editValues[`activity_${index}_year`] : ""}
                                     onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`activity_${index}_year`]: e.target.value }))}
                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                                   />
@@ -707,7 +707,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Incident</label>
                                 <textarea
-                                  value={editValues[`activity_${index}_incident`] || ""}
+                                  value={editValues[`activity_${index}_incident`] !== undefined ? editValues[`activity_${index}_incident`] : ""}
                                   onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`activity_${index}_incident`]: e.target.value }))}
                                   className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                                   rows={2}
@@ -717,7 +717,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
                                 <input
                                   type="text"
-                                  value={editValues[`activity_${index}_location`] || ""}
+                                  value={editValues[`activity_${index}_location`] !== undefined ? editValues[`activity_${index}_location`] : ""}
                                   onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`activity_${index}_location`]: e.target.value }))}
                                   className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                                 />
@@ -794,7 +794,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
                                 <input
                                   type="text"
-                                  value={editValues[`encounter_${index}_year`] || ""}
+                                  value={editValues[`encounter_${index}_year`] !== undefined ? editValues[`encounter_${index}_year`] : ""}
                                   onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`encounter_${index}_year`]: e.target.value }))}
                                   className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                                 />
@@ -802,7 +802,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Encounter Details</label>
                                 <textarea
-                                  value={editValues[`encounter_${index}_encounter_details`] || ""}
+                                  value={editValues[`encounter_${index}_encounter_details`] !== undefined ? editValues[`encounter_${index}_encounter_details`] : ""}
                                   onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`encounter_${index}_encounter_details`]: e.target.value }))}
                                   className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                                   rows={3}
@@ -874,7 +874,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                   <label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
                                   <input
                                     type="text"
-                                    value={editValues[`rolechange_${index}_year`] || ""}
+                                    value={editValues[`rolechange_${index}_year`] !== undefined ? editValues[`rolechange_${index}_year`] : ""}
                                     onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`rolechange_${index}_year`]: e.target.value }))}
                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                                   />
@@ -883,7 +883,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                   <label className="block text-xs font-medium text-gray-700 mb-1">Role</label>
                                   <input
                                     type="text"
-                                    value={editValues[`rolechange_${index}_role`] || ""}
+                                    value={editValues[`rolechange_${index}_role`] !== undefined ? editValues[`rolechange_${index}_role`] : ""}
                                     onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`rolechange_${index}_role`]: e.target.value }))}
                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                                   />
@@ -1018,7 +1018,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                                     {editingQuestionIndex === index && editingField === `question_${index}` ? (
                                       <div className="space-y-2">
                                         <textarea
-                                          value={editValues[`question_${index}`] || ""}
+                                          value={editValues[`question_${index}`] !== undefined ? editValues[`question_${index}`] : ""}
                                           onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`question_${index}`]: e.target.value }))}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                           rows={shouldShowAsTable ? 8 : 4}
