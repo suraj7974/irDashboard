@@ -48,6 +48,9 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
   const [showPDFViewer, setShowPDFViewer] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
+  const [editingActivityIndex, setEditingActivityIndex] = useState<number | null>(null);
+  const [editingEncounterIndex, setEditingEncounterIndex] = useState<number | null>(null);
+  const [editingRoleChangeIndex, setEditingRoleChangeIndex] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
@@ -99,9 +102,44 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
     }, 0);
   }, []);
 
+  const startEditingActivity = useCallback((activityIndex: number, activity: any) => {
+    setEditingActivityIndex(activityIndex);
+    setEditingField(`activity_${activityIndex}`);
+    setEditValues((prev: any) => ({ 
+      ...prev, 
+      [`activity_${activityIndex}_sr_no`]: activity.sr_no || "",
+      [`activity_${activityIndex}_incident`]: activity.incident || "",
+      [`activity_${activityIndex}_year`]: activity.year || "",
+      [`activity_${activityIndex}_location`]: activity.location || ""
+    }));
+  }, []);
+
+  const startEditingEncounter = useCallback((encounterIndex: number, encounter: any) => {
+    setEditingEncounterIndex(encounterIndex);
+    setEditingField(`encounter_${encounterIndex}`);
+    setEditValues((prev: any) => ({ 
+      ...prev, 
+      [`encounter_${encounterIndex}_year`]: encounter.year || "",
+      [`encounter_${encounterIndex}_encounter_details`]: encounter.encounter_details || ""
+    }));
+  }, []);
+
+  const startEditingRoleChange = useCallback((roleChangeIndex: number, roleChange: any) => {
+    setEditingRoleChangeIndex(roleChangeIndex);
+    setEditingField(`rolechange_${roleChangeIndex}`);
+    setEditValues((prev: any) => ({ 
+      ...prev, 
+      [`rolechange_${roleChangeIndex}_year`]: roleChange.year || "",
+      [`rolechange_${roleChangeIndex}_role`]: roleChange.role || ""
+    }));
+  }, []);
+
   const cancelEditing = useCallback(() => {
     setEditingField(null);
     setEditingQuestionIndex(null);
+    setEditingActivityIndex(null);
+    setEditingEncounterIndex(null);
+    setEditingRoleChangeIndex(null);
     setEditValues({});
   }, []);
 
@@ -128,6 +166,53 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
             questions_analysis: {
               ...localReport.questions_analysis,
               results: updatedResults,
+            },
+          };
+        } else if (fieldKey.startsWith("activity_")) {
+          // Handle criminal activity updates
+          const activityIndex = parseInt(fieldKey.split("_")[1]);
+          const updatedActivities = [...(metadata?.criminal_activities || [])];
+          updatedActivities[activityIndex] = {
+            sr_no: editValues[`activity_${activityIndex}_sr_no`],
+            incident: editValues[`activity_${activityIndex}_incident`],
+            year: editValues[`activity_${activityIndex}_year`],
+            location: editValues[`activity_${activityIndex}_location`]
+          };
+
+          updateData = {
+            metadata: {
+              ...metadata,
+              criminal_activities: updatedActivities,
+            },
+          };
+        } else if (fieldKey.startsWith("encounter_")) {
+          // Handle police encounter updates
+          const encounterIndex = parseInt(fieldKey.split("_")[1]);
+          const updatedEncounters = [...(metadata?.police_encounters || [])];
+          updatedEncounters[encounterIndex] = {
+            year: editValues[`encounter_${encounterIndex}_year`],
+            encounter_details: editValues[`encounter_${encounterIndex}_encounter_details`]
+          };
+
+          updateData = {
+            metadata: {
+              ...metadata,
+              police_encounters: updatedEncounters,
+            },
+          };
+        } else if (fieldKey.startsWith("rolechange_")) {
+          // Handle role change updates
+          const roleChangeIndex = parseInt(fieldKey.split("_")[1]);
+          const updatedRoleChanges = [...(metadata?.hierarchical_role_changes || [])];
+          updatedRoleChanges[roleChangeIndex] = {
+            year: editValues[`rolechange_${roleChangeIndex}_year`],
+            role: editValues[`rolechange_${roleChangeIndex}_role`]
+          };
+
+          updateData = {
+            metadata: {
+              ...metadata,
+              hierarchical_role_changes: updatedRoleChanges,
             },
           };
         } else if (fieldKey.startsWith("metadata.")) {
@@ -582,27 +667,104 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                 {metadata.criminal_activities && metadata.criminal_activities.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Criminal Activities</h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full border border-gray-200 rounded-lg">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sr. No.</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Incident</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {metadata.criminal_activities.map((activity, index) => (
-                            <tr key={index}>
-                              <td className="px-4 py-3 text-sm text-gray-900">{activity.sr_no}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{activity.incident}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{activity.year}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{activity.location}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="space-y-4">
+                      {metadata.criminal_activities.map((activity, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="flex items-start justify-between mb-3">
+                            <h4 className="text-sm font-medium text-gray-900">Activity #{index + 1}</h4>
+                            {!(editingActivityIndex === index && editingField === `activity_${index}`) && (
+                              <button
+                                onClick={() => startEditingActivity(index, activity)}
+                                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                title="Edit activity"
+                              >
+                                <Edit3 className="h-3 w-3 text-gray-400" />
+                              </button>
+                            )}
+                          </div>
+
+                          {editingActivityIndex === index && editingField === `activity_${index}` ? (
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">Sr. No.</label>
+                                  <input
+                                    type="text"
+                                    value={editValues[`activity_${index}_sr_no`] || ""}
+                                    onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`activity_${index}_sr_no`]: e.target.value }))}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
+                                  <input
+                                    type="text"
+                                    value={editValues[`activity_${index}_year`] || ""}
+                                    onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`activity_${index}_year`]: e.target.value }))}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Incident</label>
+                                <textarea
+                                  value={editValues[`activity_${index}_incident`] || ""}
+                                  onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`activity_${index}_incident`]: e.target.value }))}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  rows={2}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
+                                <input
+                                  type="text"
+                                  value={editValues[`activity_${index}_location`] || ""}
+                                  onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`activity_${index}_location`]: e.target.value }))}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                />
+                              </div>
+                              
+                              <div className="flex items-center space-x-2 pt-2">
+                                <button
+                                  onClick={() => saveField(`activity_${index}`)}
+                                  disabled={saving}
+                                  className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                  <Save className="h-3 w-3" />
+                                  <span>{saving ? 'Saving...' : 'Save'}</span>
+                                </button>
+                                <button
+                                  onClick={cancelEditing}
+                                  disabled={saving}
+                                  className="flex items-center space-x-1 px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400"
+                                >
+                                  <RotateCcw className="h-3 w-3" />
+                                  <span>Cancel</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="font-medium text-gray-700">Sr. No:</span>
+                                <span className="ml-2 text-gray-600">{activity.sr_no}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">Year:</span>
+                                <span className="ml-2 text-gray-600">{activity.year}</span>
+                              </div>
+                              <div className="col-span-2">
+                                <span className="font-medium text-gray-700">Incident:</span>
+                                <p className="mt-1 text-gray-600">{activity.incident}</p>
+                              </div>
+                              <div className="col-span-2">
+                                <span className="font-medium text-gray-700">Location:</span>
+                                <span className="ml-2 text-gray-600">{activity.location}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -613,11 +775,71 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Police Encounters</h3>
                     <div className="space-y-3">
                       {metadata.police_encounters.map((encounter, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">{encounter.year}</span>
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="flex items-start justify-between mb-3">
+                            <h4 className="text-sm font-medium text-gray-900">Encounter #{index + 1}</h4>
+                            {!(editingEncounterIndex === index && editingField === `encounter_${index}`) && (
+                              <button
+                                onClick={() => startEditingEncounter(index, encounter)}
+                                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                title="Edit encounter"
+                              >
+                                <Edit3 className="h-3 w-3 text-gray-400" />
+                              </button>
+                            )}
                           </div>
-                          <p className="text-sm text-gray-600">{encounter.encounter_details}</p>
+
+                          {editingEncounterIndex === index && editingField === `encounter_${index}` ? (
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
+                                <input
+                                  type="text"
+                                  value={editValues[`encounter_${index}_year`] || ""}
+                                  onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`encounter_${index}_year`]: e.target.value }))}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Encounter Details</label>
+                                <textarea
+                                  value={editValues[`encounter_${index}_encounter_details`] || ""}
+                                  onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`encounter_${index}_encounter_details`]: e.target.value }))}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  rows={3}
+                                />
+                              </div>
+                              
+                              <div className="flex items-center space-x-2 pt-2">
+                                <button
+                                  onClick={() => saveField(`encounter_${index}`)}
+                                  disabled={saving}
+                                  className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                  <Save className="h-3 w-3" />
+                                  <span>{saving ? 'Saving...' : 'Save'}</span>
+                                </button>
+                                <button
+                                  onClick={cancelEditing}
+                                  disabled={saving}
+                                  className="flex items-center space-x-1 px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400"
+                                >
+                                  <RotateCcw className="h-3 w-3" />
+                                  <span>Cancel</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">{encounter.year}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700 text-sm">Details:</span>
+                                <p className="mt-1 text-sm text-gray-600">{encounter.encounter_details}</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -628,23 +850,78 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                 {metadata.hierarchical_role_changes && metadata.hierarchical_role_changes.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Hierarchical Role Changes</h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full border border-gray-200 rounded-lg">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {metadata.hierarchical_role_changes.map((change, index) => (
-                            <tr key={index}>
-                              <td className="px-4 py-3 text-sm text-gray-900">{change.year}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{change.role}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="space-y-3">
+                      {metadata.hierarchical_role_changes.map((change, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="flex items-start justify-between mb-3">
+                            <h4 className="text-sm font-medium text-gray-900">Role Change #{index + 1}</h4>
+                            {!(editingRoleChangeIndex === index && editingField === `rolechange_${index}`) && (
+                              <button
+                                onClick={() => startEditingRoleChange(index, change)}
+                                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                title="Edit role change"
+                              >
+                                <Edit3 className="h-3 w-3 text-gray-400" />
+                              </button>
+                            )}
+                          </div>
+
+                          {editingRoleChangeIndex === index && editingField === `rolechange_${index}` ? (
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
+                                  <input
+                                    type="text"
+                                    value={editValues[`rolechange_${index}_year`] || ""}
+                                    onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`rolechange_${index}_year`]: e.target.value }))}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">Role</label>
+                                  <input
+                                    type="text"
+                                    value={editValues[`rolechange_${index}_role`] || ""}
+                                    onChange={(e) => setEditValues((prev: any) => ({ ...prev, [`rolechange_${index}_role`]: e.target.value }))}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center space-x-2 pt-2">
+                                <button
+                                  onClick={() => saveField(`rolechange_${index}`)}
+                                  disabled={saving}
+                                  className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                  <Save className="h-3 w-3" />
+                                  <span>{saving ? 'Saving...' : 'Save'}</span>
+                                </button>
+                                <button
+                                  onClick={cancelEditing}
+                                  disabled={saving}
+                                  className="flex items-center space-x-1 px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400"
+                                >
+                                  <RotateCcw className="h-3 w-3" />
+                                  <span>Cancel</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="font-medium text-gray-700">Year:</span>
+                                <span className="ml-2 text-gray-600">{change.year}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">Role:</span>
+                                <span className="ml-2 text-gray-600">{change.role}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
