@@ -119,8 +119,8 @@ async def process_pdf(file: UploadFile = File(...)):
             try:
                 gemini_api_key = os.getenv('GEMINI_API_KEY')
                 if gemini_api_key:
-                    # Get batch size from environment or use default of 10 questions per batch
-                    batch_size = int(os.getenv('GEMINI_BATCH_SIZE', '10'))
+                    # Get batch size from environment or use default of 6 questions per batch
+                    batch_size = int(os.getenv('GEMINI_BATCH_SIZE', '6'))
                     print(f"🔧 Using Gemini batch processing: {batch_size} questions per request")
                     
                     # Initialize processor with batch processing

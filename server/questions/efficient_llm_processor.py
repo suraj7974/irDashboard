@@ -43,7 +43,7 @@ class EfficientLLMProcessor:
     Efficient LLM processor that processes multiple questions in batches to minimize API calls
     """
 
-    def __init__(self, api_key: str = None, batch_size: int = 10):
+    def __init__(self, api_key: str = None, batch_size: int = 6):
         """Initialize the processor with batch processing"""
 
         # Set up Gemini API
@@ -110,6 +110,31 @@ class EfficientLLMProcessor:
             [f"{i+1}. {q}" for i, q in enumerate(questions_batch)]
         )
 
+        # Calculate actual question numbers for this batch (for table formatting)
+        start_question_num = batch_index * self.batch_size + 1
+        table_questions_in_batch = []
+        for i, _ in enumerate(questions_batch):
+            actual_question_num = start_question_num + i
+            if 28 <= actual_question_num <= 40:
+                table_questions_in_batch.append(i + 1)  # 1-based index for this batch
+
+        # Add table formatting instructions if needed
+        table_instructions = ""
+        if table_questions_in_batch:
+            table_questions_str = ", ".join(map(str, table_questions_in_batch))
+            table_instructions = f"""
+
+SPECIAL TABULAR FORMATTING:
+- For questions {table_questions_str} in this batch: Return answers in tabular format
+- Use pipe separators: Column1 | Column2 | Column3 | Column4
+- Each row on a new line
+- Handle both English and Hindi text properly
+- Examples:
+  * Hindi: "नाम | संख्या | वर्ष | स्थान\\nराम शर्मा | 5 | 2020 | गाँव अ\\nश्याम गुप्ता | 3 | 2021 | गाँव ब"
+- Include ALL data found, even if tables are very long (10+ rows)
+- Do not truncate or summarize table data
+- Maintain consistent column structure across all rows"""
+
         prompt = f"""
 Analyze the document and find answers for these questions. For each question, determine if it exists in the document and extract the answer.
 
@@ -134,7 +159,7 @@ Rules:
 - Match questions that are very similar in meaning
 - Extract complete answers that follow the questions
 - If no match found, set question_found to false and leave answer_text empty
-- Be thorough but concise in answers
+- Be thorough but concise in answers{table_instructions}
 """
 
         try:
@@ -183,7 +208,9 @@ Rules:
                 print(f"⚠️  API quota/rate limit detected, waiting longer...")
                 time.sleep(10)
             elif "token" in error_msg or "context" in error_msg:
-                print(f"⚠️  Token limit exceeded for this document. Document may be too large.")
+                print(
+                    f"⚠️  Token limit exceeded for this document. Document may be too large."
+                )
                 print(f"📄 Document length: {len(pdf_content):,} characters")
                 time.sleep(3)
             else:
