@@ -65,7 +65,9 @@ class EfficientLLMProcessor:
         self.request_delay = 2.0  # 2 seconds between batch requests
 
         print(f"✅ Efficient LLM Processor initialized with batch size: {batch_size}")
-        print(f"⏱️  Processing ~{60//batch_size} batches instead of 60 individual requests")
+        print(
+            f"⏱️  Processing ~{60//batch_size} batches instead of 60 individual requests"
+        )
 
     def _wait_between_batches(self):
         """Wait between batch requests to avoid overwhelming the API"""
@@ -104,8 +106,10 @@ class EfficientLLMProcessor:
         """Process a batch of questions in a single API request"""
 
         # Create comprehensive prompt for batch processing
-        questions_list = "\n".join([f"{i+1}. {q}" for i, q in enumerate(questions_batch)])
-        
+        questions_list = "\n".join(
+            [f"{i+1}. {q}" for i, q in enumerate(questions_batch)]
+        )
+
         prompt = f"""
 Analyze the document and find answers for these questions. For each question, determine if it exists in the document and extract the answer.
 
@@ -113,7 +117,7 @@ QUESTIONS TO ANALYZE:
 {questions_list}
 
 DOCUMENT CONTENT:
-{pdf_content[:12000]}
+{pdf_content}
 
 For each question, respond with a JSON array where each object has:
 {{
@@ -134,7 +138,10 @@ Rules:
 """
 
         try:
-            print(f"🔄 Processing batch {batch_index + 1} ({len(questions_batch)} questions)...")
+            print(
+                f"🔄 Processing batch {batch_index + 1} ({len(questions_batch)} questions)..."
+            )
+            print(f"📄 Document content length: {len(pdf_content):,} characters")
             response = self.model.generate_content(prompt)
             result_text = response.text.strip()
 
@@ -142,38 +149,51 @@ Rules:
             json_match = re.search(r"\[.*\]", result_text, re.DOTALL)
             if json_match:
                 batch_results = json.loads(json_match.group())
-                
+
                 # Convert to our format
                 formatted_results = []
                 for i, result in enumerate(batch_results):
                     if i < len(questions_batch):  # Safety check
-                        formatted_results.append({
-                            "standard_question": questions_batch[i],
-                            "found_question": result.get("pdf_question_text", "") if result.get("question_found") else "",
-                            "answer": result.get("answer_text", "") if result.get("question_found") else ""
-                        })
-                    
+                        formatted_results.append(
+                            {
+                                "standard_question": questions_batch[i],
+                                "found_question": (
+                                    result.get("pdf_question_text", "")
+                                    if result.get("question_found")
+                                    else ""
+                                ),
+                                "answer": (
+                                    result.get("answer_text", "")
+                                    if result.get("question_found")
+                                    else ""
+                                ),
+                            }
+                        )
+
                 return formatted_results
             else:
                 print(f"❌ Could not parse JSON from batch {batch_index + 1}")
-                
+
         except Exception as e:
             error_msg = str(e).lower()
             print(f"❌ Error processing batch {batch_index + 1}: {e}")
-            
+
             # Handle specific errors
-            if 'quota' in error_msg or 'rate limit' in error_msg:
+            if "quota" in error_msg or "rate limit" in error_msg:
                 print(f"⚠️  API quota/rate limit detected, waiting longer...")
                 time.sleep(10)
+            elif "token" in error_msg or "context" in error_msg:
+                print(f"⚠️  Token limit exceeded for this document. Document may be too large.")
+                print(f"📄 Document length: {len(pdf_content):,} characters")
+                time.sleep(3)
             else:
                 time.sleep(3)
 
         # Return empty results for failed batch
-        return [{
-            "standard_question": q,
-            "found_question": "",
-            "answer": ""
-        } for q in questions_batch]
+        return [
+            {"standard_question": q, "found_question": "", "answer": ""}
+            for q in questions_batch
+        ]
 
     def process_pdf_efficiently(self, pdf_path: str, question_file: str) -> Dict:
         """Process PDF efficiently using batch processing to minimize API calls"""
@@ -191,8 +211,10 @@ Rules:
             return {"error": "No content extracted from PDF"}
 
         total_questions = len(questions)
-        num_batches = (total_questions + self.batch_size - 1) // self.batch_size  # Ceiling division
-        
+        num_batches = (
+            total_questions + self.batch_size - 1
+        ) // self.batch_size  # Ceiling division
+
         print(f"📊 Processing {total_questions} questions in {num_batches} batches")
         print(f"📦 Batch size: {self.batch_size} questions per request")
         print(f"⏱️  Estimated time: ~{num_batches * self.request_delay:.0f} seconds")
@@ -205,20 +227,26 @@ Rules:
             start_idx = batch_idx * self.batch_size
             end_idx = min(start_idx + self.batch_size, total_questions)
             batch_questions = questions[start_idx:end_idx]
-            
+
             progress_percent = ((batch_idx + 1) / num_batches) * 100
-            print(f"� Batch {batch_idx + 1}/{num_batches} ({progress_percent:.1f}%) - Questions {start_idx + 1}-{end_idx}")
-            
+            print(
+                f"� Batch {batch_idx + 1}/{num_batches} ({progress_percent:.1f}%) - Questions {start_idx + 1}-{end_idx}"
+            )
+
             # Process this batch
-            batch_results = self.process_questions_batch(batch_questions, pdf_content, batch_idx)
+            batch_results = self.process_questions_batch(
+                batch_questions, pdf_content, batch_idx
+            )
             all_results.extend(batch_results)
-            
+
             # Count successful matches in this batch
             batch_matches = sum(1 for r in batch_results if r["found_question"])
             successful_matches += batch_matches
-            
-            print(f"  ✅ Batch completed: {batch_matches}/{len(batch_questions)} questions found")
-            
+
+            print(
+                f"  ✅ Batch completed: {batch_matches}/{len(batch_questions)} questions found"
+            )
+
             # Wait between batches (except for the last one)
             if batch_idx < num_batches - 1:
                 self._wait_between_batches()
@@ -239,15 +267,21 @@ Rules:
                     "batch_size": self.batch_size,
                     "total_batches": num_batches,
                     "api_requests_made": num_batches,
-                    "requests_saved": total_questions - num_batches
-                }
+                    "requests_saved": total_questions - num_batches,
+                },
             },
             "results": all_results,
         }
 
-        print(f"✅ Completed in {processing_time:.1f} seconds ({processing_time/60:.1f} minutes)")
-        print(f"📊 Results: {successful_matches}/{len(questions)} questions found ({final_results['summary']['success_rate']:.1f}%)")
-        print(f"🎯 Efficiency: Used {num_batches} API requests instead of {total_questions} (saved {total_questions - num_batches} requests!)")
+        print(
+            f"✅ Completed in {processing_time:.1f} seconds ({processing_time/60:.1f} minutes)"
+        )
+        print(
+            f"📊 Results: {successful_matches}/{len(questions)} questions found ({final_results['summary']['success_rate']:.1f}%)"
+        )
+        print(
+            f"🎯 Efficiency: Used {num_batches} API requests instead of {total_questions} (saved {total_questions - num_batches} requests!)"
+        )
 
         return final_results
 
