@@ -203,6 +203,6 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))
     print(f"🚀 Starting server at http://{host}:{port}")
     print(
-        "ℹ️  Make sure your .env contains the correct GROQ_API_KEY and ALLOWED_ORIGINS"
+        "ℹ️  Make sure your .env contains the correct GEMINI_API_KEY and ALLOWED_ORIGINS"
     )
     uvicorn.run("server:app", host=host, port=port, reload=True)

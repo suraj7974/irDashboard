@@ -1,6 +1,6 @@
 """
-Multi-provider AI client with Groq and Google Gemini support
-Automatically switches between providers when quotas are exceeded
+Gemini AI client for IR Dashboard
+Simplified to use only Google Gemini models
 """
 
 import os
@@ -8,15 +8,7 @@ import time
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 
-# Import providers
-try:
-    from groq import Groq
-
-    GROQ_AVAILABLE = True
-except ImportError:
-    GROQ_AVAILABLE = False
-    print("⚠️ Groq not available")
-
+# Import Gemini provider
 try:
     import google.generativeai as genai
 
@@ -28,14 +20,10 @@ except ImportError:
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 
-class MultiAIClient:
+class GeminiAIClient:
     def __init__(self):
         self.providers = []
         self.current_provider_index = 0
-
-        # Initialize Groq if available
-        if GROQ_AVAILABLE and os.getenv("GROQ_API_KEY"):
-            self._setup_groq()
 
         # Initialize Gemini if available
         if GEMINI_AVAILABLE and os.getenv("GEMINI_API_KEY"):
@@ -43,56 +31,10 @@ class MultiAIClient:
 
         if not self.providers:
             print(
-                "❌ No AI providers available! Please set GROQ_API_KEY or GEMINI_API_KEY"
+                "❌ No AI providers available! Please set GEMINI_API_KEY"
             )
         else:
-            print(f"✅ Initialized {len(self.providers)} AI provider(s)")
-
-    def _setup_groq(self):
-        """Setup Groq provider"""
-        try:
-            groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
-            groq_models = [
-                {
-                    "name": "llama-3.1-8b-instant",
-                    "context_window": 131072,
-                    "max_tokens": 8192,
-                    "provider": "groq",
-                    "client": groq_client,
-                    "description": "Fast Llama model with large context",
-                },
-                {
-                    "name": "llama-3.3-70b-versatile",
-                    "context_window": 131072,
-                    "max_tokens": 8192,
-                    "provider": "groq",
-                    "client": groq_client,
-                    "description": "Powerful versatile model",
-                },
-                {
-                    "name": "deepseek-r1-distill-llama-70b",
-                    "context_window": 131072,
-                    "max_tokens": 8192,
-                    "provider": "groq",
-                    "client": groq_client,
-                    "description": "DeepSeek reasoning model",
-                },
-                {
-                    "name": "meta-llama/llama-4-maverick-17b-128e-instruct",
-                    "context_window": 65536,
-                    "max_tokens": 8192,
-                    "provider": "groq",
-                    "client": groq_client,
-                    "description": "Balanced Llama 4 model",
-                },
-            ]
-
-            self.providers.extend(groq_models)
-            print(f"✅ Added {len(groq_models)} Groq models")
-
-        except Exception as e:
-            print(f"⚠️ Groq setup failed: {e}")
+            print(f"✅ Initialized {len(self.providers)} Gemini model(s)")
 
     def _setup_gemini(self):
         """Setup Google Gemini provider"""
@@ -168,38 +110,20 @@ class MultiAIClient:
         print(f"   📝 Description: {current['description']}")
 
     def print_provider_info(self):
-        """Print information about all available providers"""
-        print(f"\n🤖 Available AI Providers ({len(self.providers)} models):")
+        """Print information about all available Gemini models"""
+        print(f"\n🤖 Available Gemini Models ({len(self.providers)} models):")
         print("=" * 70)
 
-        groq_models = [p for p in self.providers if p["provider"] == "groq"]
-        gemini_models = [p for p in self.providers if p["provider"] == "gemini"]
-
-        if groq_models:
-            print("🚀 GROQ MODELS:")
-            for i, model in enumerate(groq_models):
-                status = (
-                    "🟢 CURRENT"
-                    if self.providers.index(model) == self.current_provider_index
-                    else "⚪ Available"
-                )
-                print(f"   {status} {model['name']}")
-                print(f"          Context: {model['context_window']:,} tokens")
-                print(f"          Info: {model['description']}")
-            print()
-
-        if gemini_models:
-            print("🧠 GEMINI MODELS:")
-            for i, model in enumerate(gemini_models):
-                status = (
-                    "🟢 CURRENT"
-                    if self.providers.index(model) == self.current_provider_index
-                    else "⚪ Available"
-                )
-                print(f"   {status} {model['name']}")
-                print(f"          Context: {model['context_window']:,} tokens")
-                print(f"          Info: {model['description']}")
-            print()
+        for i, model in enumerate(self.providers):
+            status = (
+                "🟢 CURRENT"
+                if i == self.current_provider_index
+                else "⚪ Available"
+            )
+            print(f"   {status} {model['name']}")
+            print(f"          Context: {model['context_window']:,} tokens")
+            print(f"          Info: {model['description']}")
+        print()
 
     def chat_completion(
         self, messages, temperature=0.2, max_tokens=None, max_retries=3
@@ -222,11 +146,7 @@ class MultiAIClient:
                 if max_tokens is None:
                     max_tokens = current["max_tokens"]
 
-                if current["provider"] == "groq":
-                    response = self._groq_completion(
-                        current, messages, temperature, max_tokens
-                    )
-                elif current["provider"] == "gemini":
+                if current["provider"] == "gemini":
                     response = self._gemini_completion(
                         current, messages, temperature, max_tokens
                     )
@@ -275,16 +195,6 @@ class MultiAIClient:
 
         # If we've tried all providers, raise error
         raise Exception(f"All providers failed after {attempts} attempts")
-
-    def _groq_completion(self, provider_config, messages, temperature, max_tokens):
-        """Handle Groq completion"""
-        response = provider_config["client"].chat.completions.create(
-            model=provider_config["name"],
-            messages=messages,
-            temperature=temperature,
-            max_tokens=min(max_tokens, provider_config["max_tokens"]),
-        )
-        return response
 
     def _gemini_completion(self, provider_config, messages, temperature, max_tokens):
         """Handle Gemini completion"""

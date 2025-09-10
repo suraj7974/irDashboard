@@ -2,7 +2,6 @@
 fastapi
 uvicorn
 python-multipart
-groq
 google-generativeai
 pdf2image
 pytesseract

@@ -1,4 +1,4 @@
-from multi_ai_client import MultiAIClient
+from gemini_client import GeminiAIClient
 import pytesseract
 from pdf2image import convert_from_path
 import os
@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ai_client = MultiAIClient()
+ai_client = GeminiAIClient()
 
 OUTPUT_FOLDER = "./summaries/"
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)

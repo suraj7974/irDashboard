@@ -1,4 +1,4 @@
-from multi_ai_client import MultiAIClient
+from gemini_client import GeminiAIClient
 import os
 from pdf2image import convert_from_path
 import pytesseract
@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ai_client = MultiAIClient()
+ai_client = GeminiAIClient()
 
 OUTPUT_FOLDER = "./summaries/"
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
@@ -189,8 +189,7 @@ def split_text_to_chunks(text, max_tokens=None):  # Make adaptive
         return ai_client.split_text_adaptive(text, safety_margin=0.6)
 
     # Legacy fixed-size chunking if max_tokens specified
-    # Use Groq client's token estimation
-    # Fallback to character-based chunking since tiktoken isn't available
+    # Use character-based chunking as fallback
     max_chars = max_tokens * 4  # Rough approximation
     chunks = []
     lines = text.split("\n")
