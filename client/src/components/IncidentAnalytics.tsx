@@ -5,7 +5,7 @@ import { IRReport } from "../types";
 
 interface SimpleIncident {
   incident_name: string;
-  incident_type: 'criminal_activity' | 'police_encounter';
+  incident_type: "criminal_activity" | "police_encounter";
   people: string[];
   reports: string[];
   year?: string;
@@ -27,25 +27,22 @@ function IncidentDetailsModal({ incident, isOpen, onClose }: IncidentDetailsModa
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-bold text-gray-900">Incident Details</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        
+
         <div className="p-6">
           <div className="flex items-center space-x-2 mb-4">
             <h3 className="text-2xl font-bold text-gray-900">{incident.incident_name}</h3>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              incident.incident_type === 'criminal_activity'
-                ? 'bg-red-100 text-red-800'
-                : 'bg-blue-100 text-blue-800'
-            }`}>
-              {incident.incident_type === 'criminal_activity' ? 'Criminal Activity' : 'Police Encounter'}
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                incident.incident_type === "criminal_activity" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"
+              }`}
+            >
+              {incident.incident_type === "criminal_activity" ? "Criminal Activity" : "Police Encounter"}
             </span>
           </div>
 
@@ -134,33 +131,30 @@ export default function IncidentAnalytics() {
   const extractIncidentsFromReports = (reports: IRReport[]): SimpleIncident[] => {
     const incidentMap = new Map<string, SimpleIncident>();
 
-    reports.forEach(report => {
-      if (report.status !== 'completed' || !report.metadata?.name) return;
+    reports.forEach((report) => {
+      if (report.status !== "completed" || !report.metadata?.name) return;
 
       const personName = report.metadata.name;
-      
+
       // Skip if person name is "Unknown" or "अज्ञात"
-      if (personName.toLowerCase() === 'unknown' || personName === 'अज्ञात') return;
+      if (personName.toLowerCase() === "unknown" || personName === "अज्ञात") return;
 
       const reportName = report.original_filename;
 
       // Extract from criminal activities
-      report.metadata.criminal_activities?.forEach(activity => {
+      report.metadata.criminal_activities?.forEach((activity) => {
         // Skip if incident name is "Unknown", "अज्ञात", empty, or only whitespace
-        if (!activity.incident || 
-            activity.incident.trim() === '' || 
-            activity.incident.toLowerCase() === 'unknown' || 
-            activity.incident === 'अज्ञात') return;
-        
+        if (!activity.incident || activity.incident.trim() === "" || activity.incident.toLowerCase() === "unknown" || activity.incident === "अज्ञात") return;
+
         const key = `criminal_${activity.incident.toLowerCase()}`;
         if (!incidentMap.has(key)) {
           incidentMap.set(key, {
             incident_name: activity.incident,
-            incident_type: 'criminal_activity',
+            incident_type: "criminal_activity",
             people: [],
             reports: [],
             year: activity.year,
-            location: activity.location
+            location: activity.location,
           });
         }
         const incident = incidentMap.get(key)!;
@@ -173,21 +167,24 @@ export default function IncidentAnalytics() {
       });
 
       // Extract from police encounters
-      report.metadata.police_encounters?.forEach(encounter => {
+      report.metadata.police_encounters?.forEach((encounter) => {
         // Skip if encounter details is "Unknown", "अज्ञात", empty, or only whitespace
-        if (!encounter.encounter_details || 
-            encounter.encounter_details.trim() === '' || 
-            encounter.encounter_details.toLowerCase() === 'unknown' || 
-            encounter.encounter_details === 'अज्ञात') return;
-        
+        if (
+          !encounter.encounter_details ||
+          encounter.encounter_details.trim() === "" ||
+          encounter.encounter_details.toLowerCase() === "unknown" ||
+          encounter.encounter_details === "अज्ञात"
+        )
+          return;
+
         const key = `encounter_${encounter.encounter_details.toLowerCase()}`;
         if (!incidentMap.has(key)) {
           incidentMap.set(key, {
             incident_name: encounter.encounter_details,
-            incident_type: 'police_encounter',
+            incident_type: "police_encounter",
             people: [],
             reports: [],
-            year: encounter.year
+            year: encounter.year,
           });
         }
         const incident = incidentMap.get(key)!;
@@ -203,9 +200,10 @@ export default function IncidentAnalytics() {
     return Array.from(incidentMap.values()).sort((a, b) => b.people.length - a.people.length);
   };
 
-  const filteredIncidents = incidents.filter(incident =>
-    incident.incident_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    incident.people.some(person => person.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredIncidents = incidents.filter(
+    (incident) =>
+      incident.incident_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      incident.people.some((person) => person.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleViewDetails = (incident: SimpleIncident) => {
@@ -220,11 +218,9 @@ export default function IncidentAnalytics() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-          <span className="ml-3 text-lg text-gray-600">Loading incidents...</span>
-        </div>
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <span className="ml-3 text-lg text-gray-600">Loading incidents...</span>
       </div>
     );
   }
@@ -262,9 +258,7 @@ export default function IncidentAnalytics() {
             <Users className="h-8 w-8 text-blue-500" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total People</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {new Set(filteredIncidents.flatMap(i => i.people)).size}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{new Set(filteredIncidents.flatMap((i) => i.people)).size}</p>
             </div>
           </div>
         </div>
@@ -274,9 +268,7 @@ export default function IncidentAnalytics() {
             <Shield className="h-8 w-8 text-red-500" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Criminal Activities</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {filteredIncidents.filter(i => i.incident_type === 'criminal_activity').length}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{filteredIncidents.filter((i) => i.incident_type === "criminal_activity").length}</p>
             </div>
           </div>
         </div>
@@ -286,9 +278,7 @@ export default function IncidentAnalytics() {
             <UserCheck className="h-8 w-8 text-green-500" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Police Encounters</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {filteredIncidents.filter(i => i.incident_type === 'police_encounter').length}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{filteredIncidents.filter((i) => i.incident_type === "police_encounter").length}</p>
             </div>
           </div>
         </div>
@@ -303,15 +293,13 @@ export default function IncidentAnalytics() {
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-                      {incident.incident_name}
-                    </h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      incident.incident_type === 'criminal_activity'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {incident.incident_type === 'criminal_activity' ? 'Criminal Activity' : 'Police Encounter'}
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">{incident.incident_name}</h3>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        incident.incident_type === "criminal_activity" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {incident.incident_type === "criminal_activity" ? "Criminal Activity" : "Police Encounter"}
                     </span>
                   </div>
                 </div>
@@ -319,13 +307,17 @@ export default function IncidentAnalytics() {
                 {/* People Count */}
                 <div className="flex items-center text-gray-600 mb-2">
                   <Users className="w-4 h-4 mr-2" />
-                  <span className="text-sm">{incident.people.length} {incident.people.length === 1 ? 'Person' : 'People'} Involved</span>
+                  <span className="text-sm">
+                    {incident.people.length} {incident.people.length === 1 ? "Person" : "People"} Involved
+                  </span>
                 </div>
 
                 {/* Reports Count */}
                 <div className="flex items-center text-gray-600 mb-4">
                   <FileText className="w-4 h-4 mr-2" />
-                  <span className="text-sm">{incident.reports.length} Source {incident.reports.length === 1 ? 'Report' : 'Reports'}</span>
+                  <span className="text-sm">
+                    {incident.reports.length} Source {incident.reports.length === 1 ? "Report" : "Reports"}
+                  </span>
                 </div>
 
                 {/* Additional Info */}
@@ -354,9 +346,7 @@ export default function IncidentAnalytics() {
                       </span>
                     ))}
                     {incident.people.length > 2 && (
-                      <span className="inline-block bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs">
-                        +{incident.people.length - 2} more
-                      </span>
+                      <span className="inline-block bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs">+{incident.people.length - 2} more</span>
                     )}
                   </div>
                 </div>
@@ -382,11 +372,7 @@ export default function IncidentAnalytics() {
       )}
 
       {/* Modal */}
-      <IncidentDetailsModal
-        incident={selectedIncident}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-      />
+      <IncidentDetailsModal incident={selectedIncident} isOpen={isModalOpen} onClose={handleCloseModal} />
     </div>
   );
 }

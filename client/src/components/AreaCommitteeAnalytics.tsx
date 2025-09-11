@@ -7,7 +7,7 @@ interface SimpleAreaCommittee {
   ac_name: string;
   people: string[];
   reports: string[];
-  source_types: ('administrative' | 'basic_info')[];
+  source_types: ("administrative" | "basic_info")[];
 }
 
 interface ACDetailsModalProps {
@@ -25,22 +25,17 @@ function ACDetailsModal({ ac, isOpen, onClose }: ACDetailsModalProps) {
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-bold text-gray-900">Area Committee Details</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        
+
         <div className="p-6">
           <div className="flex items-center space-x-2 mb-4">
             <h3 className="text-2xl font-bold text-gray-900">{ac.ac_name}</h3>
-            <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-              Area Committee
-            </span>
+            <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Area Committee</span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -120,37 +115,34 @@ export default function AreaCommitteeAnalytics() {
   };
 
   const cleanACName = (acName: string): string => {
-    if (!acName) return '';
-    
+    if (!acName) return "";
+
     // Remove "एरिया कमेटी" suffix and trim
     return acName
-      .replace(/\s*एरिया\s*कमेटी\s*$/i, '')
-      .replace(/\s*area\s*committee\s*$/i, '')
+      .replace(/\s*एरिया\s*कमेटी\s*$/i, "")
+      .replace(/\s*area\s*committee\s*$/i, "")
       .trim();
   };
 
   const extractACsFromReports = (reports: IRReport[]): SimpleAreaCommittee[] => {
     const acMap = new Map<string, SimpleAreaCommittee>();
 
-    reports.forEach(report => {
-      if (report.status !== 'completed' || !report.metadata?.name) return;
+    reports.forEach((report) => {
+      if (report.status !== "completed" || !report.metadata?.name) return;
 
       const personName = report.metadata.name;
-      
+
       // Skip if person name is "Unknown" or "अज्ञात"
-      if (personName.toLowerCase() === 'unknown' || personName === 'अज्ञात') return;
+      if (personName.toLowerCase() === "unknown" || personName === "अज्ञात") return;
 
       const reportName = report.original_filename;
 
       // Extract ONLY from Administrative Details (area_committee field)
       if (report.area_committee) {
         const rawACName = report.area_committee.trim();
-        
+
         // Skip if AC name is "Unknown", "अज्ञात", empty, or only whitespace
-        if (!rawACName || 
-            rawACName === '' || 
-            rawACName.toLowerCase() === 'unknown' || 
-            rawACName === 'अज्ञात') {
+        if (!rawACName || rawACName === "" || rawACName.toLowerCase() === "unknown" || rawACName === "अज्ञात") {
           return;
         }
 
@@ -162,7 +154,7 @@ export default function AreaCommitteeAnalytics() {
               ac_name: cleanedACName,
               people: [],
               reports: [],
-              source_types: []
+              source_types: [],
             });
           }
           const ac = acMap.get(key)!;
@@ -172,8 +164,8 @@ export default function AreaCommitteeAnalytics() {
           if (!ac.reports.includes(reportName)) {
             ac.reports.push(reportName);
           }
-          if (!ac.source_types.includes('administrative')) {
-            ac.source_types.push('administrative');
+          if (!ac.source_types.includes("administrative")) {
+            ac.source_types.push("administrative");
           }
         }
       }
@@ -182,9 +174,8 @@ export default function AreaCommitteeAnalytics() {
     return Array.from(acMap.values()).sort((a, b) => b.people.length - a.people.length);
   };
 
-  const filteredACs = acs.filter(ac =>
-    ac.ac_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    ac.people.some(person => person.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredACs = acs.filter(
+    (ac) => ac.ac_name.toLowerCase().includes(searchQuery.toLowerCase()) || ac.people.some((person) => person.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleViewDetails = (ac: SimpleAreaCommittee) => {
@@ -239,9 +230,7 @@ export default function AreaCommitteeAnalytics() {
             <Users className="h-8 w-8 text-blue-500" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total People</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {new Set(filteredACs.flatMap(ac => ac.people)).size}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{new Set(filteredACs.flatMap((ac) => ac.people)).size}</p>
             </div>
           </div>
         </div>
@@ -251,9 +240,7 @@ export default function AreaCommitteeAnalytics() {
             <FileText className="h-8 w-8 text-purple-500" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Reports</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {new Set(filteredACs.flatMap(ac => ac.reports)).size}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{new Set(filteredACs.flatMap((ac) => ac.reports)).size}</p>
             </div>
           </div>
         </div>
@@ -268,25 +255,25 @@ export default function AreaCommitteeAnalytics() {
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-                      {ac.ac_name}
-                    </h3>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Area Committee
-                    </span>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">{ac.ac_name}</h3>
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Area Committee</span>
                   </div>
                 </div>
 
                 {/* People Count */}
                 <div className="flex items-center text-gray-600 mb-2">
                   <Users className="w-4 h-4 mr-2" />
-                  <span className="text-sm">{ac.people.length} {ac.people.length === 1 ? 'Person' : 'People'} Associated</span>
+                  <span className="text-sm">
+                    {ac.people.length} {ac.people.length === 1 ? "Person" : "People"} Associated
+                  </span>
                 </div>
 
                 {/* Reports Count */}
                 <div className="flex items-center text-gray-600 mb-4">
                   <FileText className="w-4 h-4 mr-2" />
-                  <span className="text-sm">{ac.reports.length} Source {ac.reports.length === 1 ? 'Report' : 'Reports'}</span>
+                  <span className="text-sm">
+                    {ac.reports.length} Source {ac.reports.length === 1 ? "Report" : "Reports"}
+                  </span>
                 </div>
 
                 {/* People Preview */}
@@ -299,9 +286,7 @@ export default function AreaCommitteeAnalytics() {
                       </span>
                     ))}
                     {ac.people.length > 2 && (
-                      <span className="inline-block bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs">
-                        +{ac.people.length - 2} more
-                      </span>
+                      <span className="inline-block bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs">+{ac.people.length - 2} more</span>
                     )}
                   </div>
                 </div>
@@ -327,11 +312,7 @@ export default function AreaCommitteeAnalytics() {
       )}
 
       {/* Modal */}
-      <ACDetailsModal
-        ac={selectedAC}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-      />
+      <ACDetailsModal ac={selectedAC} isOpen={isModalOpen} onClose={handleCloseModal} />
     </div>
   );
 }

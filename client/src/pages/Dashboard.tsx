@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Upload, Search, BarChart3, Users, Clock, AlertTriangle } from "lucide-react";
+import { FileText, Upload, Search, BarChart3, Users, Clock, AlertTriangle, TrendingUp } from "lucide-react";
 import FileUpload from "../components/FileUpload";
 import SearchBar from "../components/SearchBar";
 import ReportCard from "../components/ReportCard";
 import ReportDetailModal from "../components/ReportDetailModal";
+import Analytics from "../components/Analytics";
 import { IRReport, SearchFilters, UploadProgress } from "../types";
 import { IRReportAPI } from "../api/reports";
 import { ParserService } from "../services/parser";
 
 export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState<"dashboard" | "analytics">("dashboard");
   const [reports, setReports] = useState<IRReport[]>([]);
   const [filteredReports, setFilteredReports] = useState<IRReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -352,10 +354,43 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Upload Section */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <FileUpload onUpload={handleFileUpload} uploading={uploading} uploadProgress={uploadProgress} />
-      </motion.div>
+      {/* Tab Navigation - Centered */}
+      <div className="flex justify-center mb-8">
+        <div className="bg-gray-100 rounded-lg p-1 inline-flex">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+              activeTab === "dashboard"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <FileText className="h-4 w-4 inline mr-2" />
+            Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab("analytics")}
+            className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+              activeTab === "analytics"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <BarChart3 className="h-4 w-4 inline mr-2" />
+            Analytics
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === "analytics" ? (
+        <Analytics />
+      ) : (
+        <>
+          {/* Upload Section */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+            <FileUpload onUpload={handleFileUpload} uploading={uploading} uploadProgress={uploadProgress} />
+          </motion.div>
 
       {/* Search Section */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
@@ -422,6 +457,8 @@ export default function Dashboard() {
           />
         )}
       </AnimatePresence>
+        </>
+      )}
     </div>
   );
 }
