@@ -42,6 +42,22 @@ export interface IRReportMetadata {
   weapons_assets?: string[];
   organizational_period?: string;
   important_points?: string[];
+  movement_routes?: MovementRoute[];
+}
+
+export interface RouteSegment {
+  sequence: number;
+  from: string;
+  to: string;
+  description?: string;
+}
+
+export interface MovementRoute {
+  route_name: string;
+  description?: string;
+  purpose?: string;
+  frequency?: string;
+  segments: RouteSegment[];
 }
 
 export interface CriminalActivity {

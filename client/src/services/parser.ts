@@ -1,4 +1,4 @@
-import { IRReportMetadata, QuestionsAnalysis } from "../types";
+import { IRReportMetadata, QuestionsAnalysis, MovementRoute, RouteSegment } from "../types";
 
 export interface ParsedResult {
   metadata: IRReportMetadata;
@@ -75,6 +75,7 @@ export class ParserService {
         : [],
       organizational_period: data["Total Organizational Period"] || data.organizational_period || "",
       important_points: Array.isArray(data["Important Points"]) ? data["Important Points"] : Array.isArray(data.important_points) ? data.important_points : [],
+      movement_routes: this.parseMovementRoutes(data["Movement Routes"] || data.movement_routes || []),
     };
   }
 
@@ -115,6 +116,36 @@ export class ParserService {
     return encounters.map((encounter) => ({
       year: encounter.Year || encounter.year || "",
       encounter_details: encounter["Encounter Details"] || encounter.encounter_details || "",
+    }));
+  }
+
+  private static parseMovementRoutes(routes: any[]): Array<{
+    route_name: string;
+    description?: string;
+    segments: Array<{
+      from: string;
+      to: string;
+      description?: string;
+      sequence: number;
+    }>;
+    frequency?: string;
+    purpose?: string;
+  }> {
+    if (!Array.isArray(routes)) return [];
+
+    return routes.map((route) => ({
+      route_name: route["Route Name"] || route.route_name || "",
+      description: route.Description || route.description || "",
+      purpose: route.Purpose || route.purpose || "",
+      frequency: route.Frequency || route.frequency || "",
+      segments: Array.isArray(route.Segments || route.segments) 
+        ? (route.Segments || route.segments).map((segment: any) => ({
+            sequence: segment.Sequence || segment.sequence || 0,
+            from: segment.From || segment.from || "",
+            to: segment.To || segment.to || "",
+            description: segment.Description || segment.description || "",
+          }))
+        : [],
     }));
   }
 

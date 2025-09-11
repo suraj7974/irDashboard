@@ -51,11 +51,12 @@ def clean_ai_json_response(raw_response):
     if start_idx == -1:
         raise ValueError("No JSON object found in response")
 
-    # Find the matching closing brace
+    # Find the matching closing brace using improved logic
     brace_count = 0
     end_idx = -1
     in_string = False
     escape_next = False
+    bracket_count = 0
 
     for i in range(start_idx, len(raw_response)):
         char = raw_response[i]
@@ -68,7 +69,7 @@ def clean_ai_json_response(raw_response):
             escape_next = True
             continue
 
-        if char == '"':
+        if char == '"' and not escape_next:
             in_string = not in_string
         elif not in_string:
             if char == "{":
@@ -78,48 +79,77 @@ def clean_ai_json_response(raw_response):
                 if brace_count == 0:
                     end_idx = i + 1
                     break
+            elif char == "[":
+                bracket_count += 1
+            elif char == "]":
+                bracket_count -= 1
 
     if end_idx == -1:
-        # If we can't find proper closing, try to fix it
-        print("⚠️ Incomplete JSON detected, attempting to fix...")
+        # If we can't find proper closing, try to fix it more intelligently
+        print("⚠️ Incomplete JSON detected, attempting smart repair...")
         json_content = raw_response[start_idx:]
-
-        # Find last complete field or object
-        last_complete_pos = len(json_content) - 1
+        
+        # Try to find the last complete field before truncation
+        lines = json_content.split('\n')
+        valid_lines = []
         brace_count = 0
+        bracket_count = 0
         in_string = False
-        escape_next = False
-
-        for i, char in enumerate(json_content):
-            if escape_next:
-                escape_next = False
-                continue
-
-            if char == "\\":
-                escape_next = True
-                continue
-
-            if char == '"':
-                in_string = not in_string
-            elif not in_string:
-                if char == "{":
-                    brace_count += 1
-                elif char == "}":
-                    brace_count -= 1
-                elif char in [",", "]"] and brace_count == 1:
-                    last_complete_pos = i
-
-        # Truncate and close properly
-        json_content = json_content[: last_complete_pos + 1]
-
+        
+        for line_idx, line in enumerate(lines):
+            line_valid = True
+            temp_brace = brace_count
+            temp_bracket = bracket_count
+            temp_in_string = in_string
+            
+            for char in line:
+                if char == '"' and (len(valid_lines) == 0 or valid_lines[-1][-1] != '\\'):
+                    temp_in_string = not temp_in_string
+                elif not temp_in_string:
+                    if char == '{':
+                        temp_brace += 1
+                    elif char == '}':
+                        temp_brace -= 1
+                    elif char == '[':
+                        temp_bracket += 1
+                    elif char == ']':
+                        temp_bracket -= 1
+            
+            # Check if this line would create negative counts or unclosed strings
+            if temp_brace < 0 or temp_bracket < 0:
+                line_valid = False
+                break
+            
+            # If line seems incomplete (ends with unfinished value), stop here
+            if line.strip() and not line.strip().endswith((',', '{', '[', '}', ']', '"')):
+                # Check if it's an incomplete field
+                if ':' in line and not (line.strip().endswith('"') or line.strip().endswith('}') or line.strip().endswith(']')):
+                    line_valid = False
+                    break
+            
+            if line_valid:
+                valid_lines.append(line)
+                brace_count = temp_brace
+                bracket_count = temp_bracket
+                in_string = temp_in_string
+            else:
+                break
+        
+        # Reconstruct valid JSON
+        json_content = '\n'.join(valid_lines)
+        
         # Remove trailing comma if present
-        json_content = json_content.rstrip().rstrip(",")
-
-        # Add missing closing braces
+        json_content = json_content.rstrip().rstrip(',')
+        
+        # Close any unclosed structures
+        while bracket_count > 0:
+            json_content += ']'
+            bracket_count -= 1
+        
         while brace_count > 0:
-            json_content += "}"
+            json_content += '}'
             brace_count -= 1
-
+        
         raw_response = json_content
     else:
         raw_response = raw_response[start_idx:end_idx]
@@ -160,6 +190,143 @@ def clean_ai_json_response(raw_response):
     raw_response = "\n".join(fixed_lines)
 
     print(f"🔧 Cleaned JSON (first 200 chars): {raw_response[:200]}...")
+
+    # Final validation - try to parse the cleaned JSON
+    try:
+        test_parse = json.loads(raw_response)
+        print(f"✅ JSON validation successful")
+        return raw_response
+    except json.JSONDecodeError as validation_error:
+        print(f"⚠️ JSON validation failed: {validation_error}")
+        
+        # Try aggressive cleanup - find last complete field and rebuild
+        lines = raw_response.split('\n')
+        cleaned_lines = []
+        current_object_depth = 0
+        current_array_depth = 0
+        in_string = False
+        last_complete_line = 0
+        
+        for i, line in enumerate(lines):
+            original_line = line
+            line_content = line.strip()
+            
+            if not line_content:
+                cleaned_lines.append(original_line)
+                continue
+            
+            # Track string state and nesting
+            j = 0
+            while j < len(line_content):
+                char = line_content[j]
+                
+                if char == '"' and (j == 0 or line_content[j-1] != '\\'):
+                    in_string = not in_string
+                elif not in_string:
+                    if char == '{':
+                        current_object_depth += 1
+                    elif char == '}':
+                        current_object_depth -= 1
+                    elif char == '[':
+                        current_array_depth += 1
+                    elif char == ']':
+                        current_array_depth -= 1
+                
+                j += 1
+            
+            # Check if this line ends a complete field/object
+            if not in_string and line_content.endswith(('"', '}', ']', ',')):
+                last_complete_line = i
+            
+            cleaned_lines.append(original_line)
+            
+            # If we have negative depth, we've hit corrupted data
+            if current_object_depth < 0 or current_array_depth < 0:
+                break
+        
+        # Rebuild from last complete line
+        if last_complete_line > 0:
+            final_lines = cleaned_lines[:last_complete_line + 1]
+            
+            # Remove trailing comma if present
+            if final_lines and final_lines[-1].strip().endswith(','):
+                final_lines[-1] = final_lines[-1].rstrip().rstrip(',')
+            
+            # Close any open structures
+            while current_array_depth > 0:
+                final_lines.append('      ]')
+                current_array_depth -= 1
+            
+            while current_object_depth > 0:
+                final_lines.append('    }' if current_object_depth > 1 else '}')
+                current_object_depth -= 1
+            
+            raw_response = '\n'.join(final_lines)
+            print(f"🔧 Aggressive cleanup applied - rebuilt from line {last_complete_line}")
+        
+        # One final validation
+        try:
+            test_parse = json.loads(raw_response)
+            print(f"✅ Final validation successful")
+        except json.JSONDecodeError:
+            print(f"⚠️ Final validation still failed - creating intelligent fallback")
+            
+            # Try to extract what we can from the corrupted JSON
+            fallback_data = {
+                "Name": "Unknown",
+                "Aliases": [],
+                "Group/Battalion": "Unknown", 
+                "Area/Region": "Unknown",
+                "Supply Team/Supply": "Unknown",
+                "IED/Bomb": "Unknown",
+                "Meeting": "Unknown", 
+                "Platoon": "Unknown",
+                "Involvement": "Unknown",
+                "History": "Unknown",
+                "Bounty": "Unknown",
+                "Villages Covered": [],
+                "Criminal Activities": [],
+                "Maoist Hierarchical Role Changes": [],
+                "Police Encounters Participated": [],
+                "Weapons/Assets Handled": [],
+                "Total Organizational Period": "Unknown",
+                "Important Points": [],
+                "Movement Routes": []
+            }
+            
+            # Try to extract basic fields from the original response
+            original_lines = raw_response.split('\n')
+            for line in original_lines:
+                line = line.strip()
+                if '"Name":' in line and '"' in line:
+                    try:
+                        name_match = line.split('"Name":')[1].strip().strip(',')
+                        if name_match.startswith('"') and name_match.endswith('"'):
+                            fallback_data["Name"] = name_match[1:-1]
+                    except:
+                        pass
+                elif '"Group/Battalion":' in line and '"' in line:
+                    try:
+                        group_match = line.split('"Group/Battalion":')[1].strip().strip(',')
+                        if group_match.startswith('"') and group_match.endswith('"'):
+                            fallback_data["Group/Battalion"] = group_match[1:-1]
+                    except:
+                        pass
+                elif '"Area/Region":' in line and '"' in line:
+                    try:
+                        area_match = line.split('"Area/Region":')[1].strip().strip(',')
+                        if area_match.startswith('"') and area_match.endswith('"'):
+                            fallback_data["Area/Region"] = area_match[1:-1]
+                    except:
+                        pass
+            
+            # Add note about parsing failure
+            fallback_data["Important Points"] = [
+                f"JSON parsing failed for chunk - some data may be incomplete",
+                "Original response contained movement route information but was truncated"
+            ]
+            
+            raw_response = json.dumps(fallback_data, ensure_ascii=False)
 
     return raw_response
 
@@ -224,6 +391,8 @@ CRITICAL INSTRUCTIONS:
 - You can respond in Hindi or English - whatever feels natural for the content
 - For names and places, use the original script (Devanagari/Hindi is preferred for Hindi names)
 - Ensure JSON structure is valid regardless of language used in values
+- Keep responses concise - if Movement Routes section becomes too long, summarize key routes only
+- NEVER exceed context limits - prioritize completeness over verbosity
 
 Analyze this Maoist report chunk and return structured JSON in this exact format:
 {{
@@ -261,7 +430,23 @@ Analyze this Maoist report chunk and return structured JSON in this exact format
   ],
   "Weapons/Assets Handled": [],
   "Total Organizational Period": "",
-  "Important Points": []
+  "Important Points": [],
+  "Movement Routes": [
+    {{
+      "Route Name": "",
+      "Description": "",
+      "Purpose": "",
+      "Frequency": "",
+      "Segments": [
+        {{
+          "Sequence": 1,
+          "From": "",
+          "To": "",
+          "Description": ""
+        }}
+      ]
+    }}
+  ]
 }}
 
 RULES:
@@ -276,6 +461,15 @@ RULES:
 - 'Maoist Hierarchical Role Changes' tracks the evolution of post/position.
 - 'Police Encounters Participated' summarizes each police confrontation.
 - 'Weapons/Assets Handled' includes any references to arms, explosives, or communications devices.
+- 'Movement Routes' should capture any route information including:
+  * Travel paths between areas/committees
+  * Migration routes 
+  * Supply routes
+  * Escape routes
+  * Regular movement patterns
+  * Each route should have a clear name/description and key segments
+  * Keep segments concise - maximum 5-8 segments per route
+  * If route details are extensive, summarize key checkpoints only
 - Answer strictly in JSON without commentary or explanations.
 - Feel free to use Hindi/Devanagari for names, places, and descriptions - this is preferred for Hindi content.
 
@@ -325,6 +519,55 @@ Report Text:
             except json.JSONDecodeError:
                 pass
 
+            # Strategy 3: Handle the specific truncation case we saw
+            try:
+                print("🔄 Attempting truncation-specific repair...")
+                
+                # Look for incomplete Movement Routes section and remove it
+                if '"Movement Routes"' in cleaned_summary:
+                    # Find the start of Movement Routes
+                    mr_start = cleaned_summary.find('"Movement Routes"')
+                    # Find the content before Movement Routes
+                    before_mr = cleaned_summary[:mr_start].rstrip().rstrip(',')
+                    
+                    # Ensure proper closing of any open structures before Movement Routes
+                    lines_before = before_mr.split('\n')
+                    cleaned_before = []
+                    brace_count = 0
+                    bracket_count = 0
+                    
+                    for line in lines_before:
+                        cleaned_before.append(line)
+                        # Count open structures
+                        for char in line:
+                            if char == '{':
+                                brace_count += 1
+                            elif char == '}':
+                                brace_count -= 1
+                            elif char == '[':
+                                bracket_count += 1
+                            elif char == ']':
+                                bracket_count -= 1
+                    
+                    # Close any open brackets
+                    while bracket_count > 0:
+                        cleaned_before.append('  ]')
+                        bracket_count -= 1
+                    
+                    # Add Movement Routes field and close JSON
+                    cleaned_before.append('  "Movement Routes": []')
+                    cleaned_before.append('}')
+                    
+                    temp_json = '\n'.join(cleaned_before)
+                    parsed_summary = json.loads(temp_json)
+                    
+                    print(f"✅ Chunk {chunk_index + 1} processed with truncation repair")
+                    return parsed_summary
+                    
+            except (json.JSONDecodeError, ValueError, IndexError) as e:
+                print(f"⚠️ Truncation repair failed: {e}")
+                pass
+
             try:
                 # Strategy 2: Use ast.literal_eval as a fallback
                 import ast
@@ -365,6 +608,7 @@ Report Text:
                 "Important Points": [
                     f"Failed to parse chunk {chunk_index + 1} - original text may contain important information"
                 ],
+                "Movement Routes": [],
             }
 
             # Save the problematic response for debugging
@@ -405,6 +649,7 @@ def merge_chunk_summaries(all_summaries):
         "Weapons/Assets Handled": set(),
         "Total Organizational Period": Counter(),
         "Important Points": set(),
+        "Movement Routes": [],
     }
 
     for summary in all_summaries:
@@ -431,6 +676,10 @@ def merge_chunk_summaries(all_summaries):
         encounters = summary.get("Police Encounters Participated", [])
         if encounters:
             merged["Police Encounters Participated"].extend(encounters)
+
+        movement_routes = summary.get("Movement Routes", [])
+        if movement_routes:
+            merged["Movement Routes"].extend(movement_routes)
 
         # Count frequency for single-value fields
         for field in [
@@ -511,6 +760,7 @@ def merge_chunk_summaries(all_summaries):
             else "Unknown"
         ),
         "Important Points": list(merged["Important Points"]),
+        "Movement Routes": merged["Movement Routes"],  # Keep nested structure
     }
 
     return final_result

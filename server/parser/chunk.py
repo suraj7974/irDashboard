@@ -65,6 +65,10 @@ def clean_gpt_response(raw_response):
     """
     print(f"🧠 Raw summary (first 100 chars): {raw_response[:100]}...")
 
+    # Handle Unicode properly
+    if isinstance(raw_response, bytes):
+        raw_response = raw_response.decode("utf-8", errors="replace")
+
     # Remove code block markers
     if raw_response.startswith("```json"):
         raw_response = raw_response.split("```json")[1].split("```")[0]
@@ -79,46 +83,105 @@ def clean_gpt_response(raw_response):
     if start_idx == -1:
         raise ValueError("No JSON object found in response")
 
-    # Find the matching closing brace
+    # Find the matching closing brace using improved logic
     brace_count = 0
     end_idx = -1
+    in_string = False
+    escape_next = False
+    bracket_count = 0
 
     for i in range(start_idx, len(raw_response)):
-        if raw_response[i] == "{":
-            brace_count += 1
-        elif raw_response[i] == "}":
-            brace_count -= 1
-            if brace_count == 0:
-                end_idx = i + 1
-                break
+        char = raw_response[i]
+
+        if escape_next:
+            escape_next = False
+            continue
+
+        if char == "\\":
+            escape_next = True
+            continue
+
+        if char == '"' and not escape_next:
+            in_string = not in_string
+        elif not in_string:
+            if char == "{":
+                brace_count += 1
+            elif char == "}":
+                brace_count -= 1
+                if brace_count == 0:
+                    end_idx = i + 1
+                    break
+            elif char == "[":
+                bracket_count += 1
+            elif char == "]":
+                bracket_count -= 1
 
     if end_idx == -1:
-        # If we can't find proper closing, try to fix it
-        print("⚠️ Incomplete JSON detected, attempting to fix...")
+        # If we can't find proper closing, try to fix it more intelligently
+        print("⚠️ Incomplete JSON detected, attempting smart repair...")
         json_content = raw_response[start_idx:]
-
-        # Count quotes to find if there's an unterminated string
-        quote_count = 0
+        
+        # Try to find the last complete field before truncation
+        lines = json_content.split('\n')
+        valid_lines = []
+        brace_count = 0
+        bracket_count = 0
         in_string = False
-        last_complete_pos = len(json_content)
-
-        for i, char in enumerate(json_content):
-            if char == '"' and (i == 0 or json_content[i - 1] != "\\"):
-                quote_count += 1
-                in_string = not in_string
-            elif char in [",", "}"] and not in_string:
-                last_complete_pos = i
-
-        # Truncate to last complete position and try to close properly
-        if in_string and quote_count % 2 == 1:
-            # Find last complete field
-            truncated = json_content[:last_complete_pos]
-            if truncated.endswith(","):
-                truncated = truncated[:-1]
-            json_content = truncated + "\n}"
-        else:
-            json_content = json_content + "}"
-
+        
+        for line_idx, line in enumerate(lines):
+            line_valid = True
+            temp_brace = brace_count
+            temp_bracket = bracket_count
+            temp_in_string = in_string
+            
+            for char in line:
+                if char == '"' and (len(valid_lines) == 0 or valid_lines[-1][-1] != '\\'):
+                    temp_in_string = not temp_in_string
+                elif not temp_in_string:
+                    if char == '{':
+                        temp_brace += 1
+                    elif char == '}':
+                        temp_brace -= 1
+                    elif char == '[':
+                        temp_bracket += 1
+                    elif char == ']':
+                        temp_bracket -= 1
+            
+            # Check if this line would create negative counts or unclosed strings
+            if temp_brace < 0 or temp_bracket < 0:
+                line_valid = False
+                break
+            
+            # If line seems incomplete (ends with unfinished value), stop here
+            if line.strip() and not line.strip().endswith((',', '{', '[', '}', ']', '"')):
+                # Check if it's an incomplete field
+                if ':' in line and not (line.strip().endswith('"') or line.strip().endswith('}') or line.strip().endswith(']')):
+                    line_valid = False
+                    break
+            
+            if line_valid:
+                valid_lines.append(line)
+                brace_count = temp_brace
+                bracket_count = temp_bracket
+                in_string = temp_in_string
+            else:
+                break
+        
+        # Reconstruct valid JSON
+        json_content = '\n'.join(valid_lines)
+        
+        # Remove trailing comma if present
+        json_content = json_content.rstrip().rstrip(',')
+        
+        # Close any unclosed structures
+        while bracket_count > 0:
+            json_content += ']'
+            bracket_count -= 1
+        
+        while brace_count > 0:
+            json_content += '}'
+            brace_count -= 1
+        
         raw_response = json_content
     else:
         raw_response = raw_response[start_idx:end_idx]
@@ -129,7 +192,39 @@ def clean_gpt_response(raw_response):
 
     print(f"🔧 Cleaned JSON (first 100 chars): {raw_response[:100]}...")
 
-    return raw_response
+    # Final validation
+    try:
+        test_parse = json.loads(raw_response)
+        print(f"✅ JSON validation successful")
+        return raw_response
+    except json.JSONDecodeError as validation_error:
+        print(f"⚠️ JSON validation failed: {validation_error}")
+        print(f"⚠️ Creating fallback response")
+        
+        # Create intelligent fallback
+        fallback_data = {
+            "Name": "Unknown",
+            "Aliases": [],
+            "Group/Battalion": "Unknown", 
+            "Area/Region": "Unknown",
+            "Supply Team/Supply": "Unknown",
+            "IED/Bomb": "Unknown",
+            "Meeting": "Unknown", 
+            "Platoon": "Unknown",
+            "Involvement": "Unknown",
+            "History": "Unknown",
+            "Bounty": "Unknown",
+            "Villages Covered": [],
+            "Criminal Activities": [],
+            "Maoist Hierarchical Role Changes": [],
+            "Police Encounters Participated": [],
+            "Weapons/Assets Handled": [],
+            "Total Organizational Period": "Unknown",
+            "Important Points": ["JSON parsing failed - some data may be incomplete"],
+            "Movement Routes": []
+        }
+        
+        return json.dumps(fallback_data, ensure_ascii=False)
 
 
 def get_summary_chunk(text_chunk, idx):
@@ -142,6 +237,8 @@ CRITICAL INSTRUCTIONS:
 - You can respond in Hindi or English - whatever feels natural for the content
 - For names and places, use the original script (Devanagari/Hindi is preferred for Hindi names)
 - Ensure JSON structure is valid regardless of language used in values
+- Keep responses concise - if any section becomes too long, summarize key points only
+- NEVER exceed context limits - prioritize completeness over verbosity
 
 Analyze this Maoist report chunk and return structured JSON in this exact format:
 {{
@@ -162,7 +259,23 @@ Analyze this Maoist report chunk and return structured JSON in this exact format
   "Police Encounters Participated": [],
   "Weapons/Assets Handled": [],
   "Total Organizational Period": "",
-  "Important Points": []
+  "Important Points": [],
+  "Movement Routes": [
+    {{
+      "Route Name": "",
+      "Description": "",
+      "Purpose": "",
+      "Frequency": "",
+      "Segments": [
+        {{
+          "Sequence": 1,
+          "From": "",
+          "To": "",
+          "Description": ""
+        }}
+      ]
+    }}
+  ]
 }}
 
 RULES:
@@ -175,6 +288,12 @@ Important Guidelines:
 - 'IED/Bomb' should include any references to explosives, IEDs, bombs, or explosive-related activities.
 - 'Meeting' should include any information about meetings, gatherings, or organizational assemblies.
 - 'Platoon' should include any references to specific platoons, units, or military formations.
+- 'Movement Routes' should capture detailed route information including:
+  * Route names and descriptions
+  * Step-by-step movement with village-to-village transitions
+  * Direction references and duration mentions
+  * Movement patterns and transportation details
+  * Look for keywords: मार्ग, रूट, जाने, आने, होते हुए, की ओर, etc.
 - You can use Hindi/Devanagari for names, places, and descriptions - this is preferred for Hindi content.
 - Strictly respond in JSON format only.
 - Fill every field fully. No fields should be left out.
@@ -227,6 +346,7 @@ def merge_summaries(all_summaries):
         "Weapons/Assets Handled": set(),
         "Total Organizational Period": Counter(),
         "Important Points": set(),
+        "Movement Routes": [],
     }
 
     for summary in all_summaries:
@@ -245,6 +365,11 @@ def merge_summaries(all_summaries):
             summary.get("Weapons/Assets Handled", [])
         )
         merged["Important Points"].update(summary.get("Important Points", []))
+
+        # Merge movement routes
+        movement_routes = summary.get("Movement Routes", [])
+        if movement_routes:
+            merged["Movement Routes"].extend(movement_routes)
 
         for field in [
             "Group/Battalion",
@@ -318,6 +443,7 @@ def merge_summaries(all_summaries):
             else "Unknown"
         ),
         "Important Points": list(merged["Important Points"]),
+        "Movement Routes": merged["Movement Routes"],  # Keep nested structure
     }
     return final_result
 
