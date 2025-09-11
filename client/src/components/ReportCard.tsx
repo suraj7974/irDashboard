@@ -66,7 +66,7 @@ export default function ReportCard({ report, onViewDetails, onDownload }: Report
         {report.metadata ? (
           <>
             {/* Stats - Only the 3 requested sections */}
-            <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
               <div className="text-center">
                 <p className="text-lg font-semibold text-gray-900">{report.metadata.criminal_activities?.length || 0}</p>
                 <p className="text-xs text-gray-500">Criminal Activities</p>
@@ -74,10 +74,6 @@ export default function ReportCard({ report, onViewDetails, onDownload }: Report
               <div className="text-center">
                 <p className="text-lg font-semibold text-gray-900">{report.metadata.police_encounters?.length || 0}</p>
                 <p className="text-xs text-gray-500">Police Encounters</p>
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-semibold text-gray-900">{report.metadata.maoists_met?.length || 0}</p>
-                <p className="text-xs text-gray-500">Maoists Met</p>
               </div>
             </div>
           </>
