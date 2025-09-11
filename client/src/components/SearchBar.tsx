@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Filter, X, Calendar, MapPin, User, Shield, Users, Zap, Package, Target } from "lucide-react";
+import { Search, Filter, X, Calendar, MapPin, User, Shield, Users, Zap, Package, Target, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SearchFilters, IRReport } from "../types";
 
@@ -11,7 +11,7 @@ interface SearchBarProps {
 }
 
 interface SearchSuggestion {
-  type: "name" | "area" | "group" | "alias" | "village" | "activity" | "filename" | "supply" | "ied" | "meeting" | "platoon";
+  type: "name" | "area" | "group" | "alias" | "village" | "activity" | "filename" | "supply" | "ied" | "meeting" | "platoon" | "involvement" | "history" | "bounty" | "period" | "weapon" | "point" | "encounter" | "role" | "route" | "question" | "answer";
   value: string;
   label: string;
   count: number;
@@ -52,6 +52,16 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
           type: "filename",
           value: report.original_filename,
           label: report.original_filename,
+          count: 1,
+        });
+      }
+
+      // Search in summary
+      if (report.summary && report.summary.toLowerCase().includes(queryLower)) {
+        allSuggestions.push({
+          type: "filename",
+          value: report.summary,
+          label: report.summary,
           count: 1,
         });
       }
@@ -127,6 +137,46 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
           });
         }
 
+        // Search in involvement
+        if (report.metadata.involvement && report.metadata.involvement.toLowerCase().includes(queryLower)) {
+          allSuggestions.push({
+            type: "involvement",
+            value: report.metadata.involvement,
+            label: report.metadata.involvement,
+            count: 1,
+          });
+        }
+
+        // Search in history
+        if (report.metadata.history && report.metadata.history.toLowerCase().includes(queryLower)) {
+          allSuggestions.push({
+            type: "history",
+            value: report.metadata.history,
+            label: report.metadata.history,
+            count: 1,
+          });
+        }
+
+        // Search in bounty
+        if (report.metadata.bounty && report.metadata.bounty.toLowerCase().includes(queryLower)) {
+          allSuggestions.push({
+            type: "bounty",
+            value: report.metadata.bounty,
+            label: report.metadata.bounty,
+            count: 1,
+          });
+        }
+
+        // Search in organizational period
+        if (report.metadata.organizational_period && report.metadata.organizational_period.toLowerCase().includes(queryLower)) {
+          allSuggestions.push({
+            type: "period",
+            value: report.metadata.organizational_period,
+            label: report.metadata.organizational_period,
+            count: 1,
+          });
+        }
+
         // Search in aliases
         if (report.metadata.aliases && Array.isArray(report.metadata.aliases)) {
           report.metadata.aliases.forEach((alias) => {
@@ -155,6 +205,34 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
           });
         }
 
+        // Search in weapons/assets
+        if (report.metadata.weapons_assets && Array.isArray(report.metadata.weapons_assets)) {
+          report.metadata.weapons_assets.forEach((weapon) => {
+            if (typeof weapon === "string" && weapon.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "weapon",
+                value: weapon,
+                label: weapon,
+                count: 1,
+              });
+            }
+          });
+        }
+
+        // Search in important points
+        if (report.metadata.important_points && Array.isArray(report.metadata.important_points)) {
+          report.metadata.important_points.forEach((point) => {
+            if (typeof point === "string" && point.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "point",
+                value: point,
+                label: point,
+                count: 1,
+              });
+            }
+          });
+        }
+
         // Search in criminal activities
         if (report.metadata.criminal_activities && Array.isArray(report.metadata.criminal_activities)) {
           report.metadata.criminal_activities.forEach((activity) => {
@@ -176,6 +254,140 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
             }
           });
         }
+
+        // Search in police encounters
+        if (report.metadata.police_encounters && Array.isArray(report.metadata.police_encounters)) {
+          report.metadata.police_encounters.forEach((encounter) => {
+            if (typeof encounter === 'object' && encounter !== null) {
+              Object.values(encounter).forEach(value => {
+                if (typeof value === "string" && value.toLowerCase().includes(queryLower)) {
+                  allSuggestions.push({
+                    type: "encounter",
+                    value: value,
+                    label: value,
+                    count: 1,
+                  });
+                }
+              });
+            }
+          });
+        }
+
+        // Search in hierarchical role changes
+        if (report.metadata.hierarchical_role_changes && Array.isArray(report.metadata.hierarchical_role_changes)) {
+          report.metadata.hierarchical_role_changes.forEach((role) => {
+            if (typeof role === 'object' && role !== null) {
+              Object.values(role).forEach(value => {
+                if (typeof value === "string" && value.toLowerCase().includes(queryLower)) {
+                  allSuggestions.push({
+                    type: "role",
+                    value: value,
+                    label: value,
+                    count: 1,
+                  });
+                }
+              });
+            }
+          });
+        }
+
+        // Search in movement routes
+        if (report.metadata.movement_routes && Array.isArray(report.metadata.movement_routes)) {
+          report.metadata.movement_routes.forEach((route) => {
+            if (route.route_name && route.route_name.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "route",
+                value: route.route_name,
+                label: route.route_name,
+                count: 1,
+              });
+            }
+            if (route.description && route.description.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "route",
+                value: route.description,
+                label: route.description,
+                count: 1,
+              });
+            }
+            if (route.purpose && route.purpose.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "route",
+                value: route.purpose,
+                label: route.purpose,
+                count: 1,
+              });
+            }
+            if (route.frequency && route.frequency.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "route",
+                value: route.frequency,
+                label: route.frequency,
+                count: 1,
+              });
+            }
+            
+            // Search in route segments
+            if (route.segments && Array.isArray(route.segments)) {
+              route.segments.forEach(segment => {
+                if (segment.from && segment.from.toLowerCase().includes(queryLower)) {
+                  allSuggestions.push({
+                    type: "route",
+                    value: segment.from,
+                    label: segment.from,
+                    count: 1,
+                  });
+                }
+                if (segment.to && segment.to.toLowerCase().includes(queryLower)) {
+                  allSuggestions.push({
+                    type: "route",
+                    value: segment.to,
+                    label: segment.to,
+                    count: 1,
+                  });
+                }
+                if (segment.description && segment.description.toLowerCase().includes(queryLower)) {
+                  allSuggestions.push({
+                    type: "route",
+                    value: segment.description,
+                    label: segment.description,
+                    count: 1,
+                  });
+                }
+              });
+            }
+          });
+        }
+      }
+
+      // Search in questions analysis
+      if (report.questions_analysis && report.questions_analysis.results) {
+        report.questions_analysis.results.forEach(result => {
+          if (result.standard_question && result.standard_question.toLowerCase().includes(queryLower)) {
+            allSuggestions.push({
+              type: "question",
+              value: result.standard_question,
+              label: result.standard_question,
+              count: 1,
+            });
+          }
+          if (result.found_question && result.found_question.toLowerCase().includes(queryLower)) {
+            allSuggestions.push({
+              type: "question",
+              value: result.found_question,
+              label: result.found_question,
+              count: 1,
+            });
+          }
+          if (result.answer && result.answer.toLowerCase().includes(queryLower)) {
+            allSuggestions.push({
+              type: "answer",
+              value: result.answer,
+              label: result.answer,
+              count: 1,
+            });
+          }
+        });
       }
     });
 
@@ -357,6 +569,28 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
         return <Users className="h-4 w-4 text-green-500" />;
       case "platoon":
         return <Shield className="h-4 w-4 text-purple-500" />;
+      case "involvement":
+        return <User className="h-4 w-4 text-indigo-500" />;
+      case "history":
+        return <Clock className="h-4 w-4 text-amber-500" />;
+      case "bounty":
+        return <Target className="h-4 w-4 text-yellow-500" />;
+      case "period":
+        return <Calendar className="h-4 w-4 text-gray-600" />;
+      case "weapon":
+        return <Zap className="h-4 w-4 text-red-600" />;
+      case "point":
+        return <Target className="h-4 w-4 text-blue-600" />;
+      case "encounter":
+        return <Shield className="h-4 w-4 text-red-600" />;
+      case "role":
+        return <Users className="h-4 w-4 text-purple-600" />;
+      case "route":
+        return <MapPin className="h-4 w-4 text-green-600" />;
+      case "question":
+        return <Search className="h-4 w-4 text-blue-600" />;
+      case "answer":
+        return <X className="h-4 w-4 text-green-600" />;
       default:
         return <Search className="h-4 w-4 text-gray-400" />;
     }
@@ -387,6 +621,28 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
         return "Meeting";
       case "platoon":
         return "Platoon";
+      case "involvement":
+        return "Involvement";
+      case "history":
+        return "History";
+      case "bounty":
+        return "Bounty";
+      case "period":
+        return "Period";
+      case "weapon":
+        return "Weapon";
+      case "point":
+        return "Important Point";
+      case "encounter":
+        return "Encounter";
+      case "role":
+        return "Role";
+      case "route":
+        return "Route";
+      case "question":
+        return "Question";
+      case "answer":
+        return "Answer";
       default:
         return "Result";
     }
@@ -418,7 +674,7 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
             onFocus={() => setShowSuggestions(query.length > 0 && suggestions.length > 0)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             onKeyDown={handleKeyDown}
-            placeholder="Search by name, location, incident, aliases, villages, or any keyword..."
+            placeholder="Search across all fields: names, locations, routes, Q&A, activities, weapons, encounters, and more..."
             className="w-full pl-10 pr-20 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
           />
 
