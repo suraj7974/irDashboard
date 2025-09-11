@@ -4,6 +4,7 @@ import { X, FileText, Download, Calendar, MapPin, User, Shield, Clock, Zap, User
 import { format } from "date-fns";
 import { IRReport } from "../types";
 import PDFViewer from "./PDFViewer";
+import RouteTracker from "./RouteTracker";
 
 interface ReportDetailModalProps {
   report: IRReport;
@@ -448,6 +449,11 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                       ))}
                     </div>
                   </div>
+                )}
+
+                {/* Movement Routes */}
+                {metadata.movement_routes && metadata.movement_routes.length > 0 && (
+                  <RouteTracker routes={metadata.movement_routes} />
                 )}
 
                 {/* Questions Analysis */}

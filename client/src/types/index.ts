@@ -39,6 +39,7 @@ export interface IRReportMetadata {
   organizational_period?: string;
   important_points?: string[];
   maoists_met?: MaoistContact[];
+  movement_routes?: MovementRoute[];
 }
 
 export interface CriminalActivity {
@@ -98,4 +99,19 @@ export interface QuestionResult {
   found_question: string;
   answer: string;
   found: boolean;
+}
+
+export interface RouteSegment {
+  sequence: number;
+  from: string;
+  to: string;
+  description?: string;
+}
+
+export interface MovementRoute {
+  route_name: string;
+  description?: string;
+  purpose?: string;
+  frequency?: string;
+  segments: RouteSegment[];
 }
