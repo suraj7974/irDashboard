@@ -9,7 +9,7 @@ export default function AppLayout() {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: FileText, current: location.pathname === '/dashboard' },
-    { name: 'Incident Analytics', href: '/incidents', icon: Shield, current: location.pathname === '/incidents' }
+    { name: 'Analytics', href: '/incidents', icon: Shield, current: location.pathname === '/incidents' || location.pathname === '/area-committees' }
   ];
 
   return (

@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
-import IncidentAnalytics from "./pages/IncidentAnalytics";
+import Analytics from "./pages/Analytics";
 import AppLayout from "./components/AppLayout";
 import "./App.css";
 
@@ -16,7 +16,8 @@ function App() {
             <Route path="/" element={<AppLayout />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
-              <Route path="incidents" element={<IncidentAnalytics />} />
+              <Route path="incidents" element={<Analytics />} />
+              <Route path="area-committees" element={<Analytics />} />
             </Route>
           </Routes>
         </ProtectedRoute>
