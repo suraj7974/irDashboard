@@ -11,7 +11,7 @@ interface SearchBarProps {
 }
 
 interface SearchSuggestion {
-  type: "name" | "area" | "group" | "alias" | "village" | "activity" | "filename" | "supply" | "ied" | "meeting" | "platoon";
+  type: "name" | "area" | "group" | "alias" | "village" | "activity" | "filename" | "supply" | "ied" | "meeting" | "platoon" | "encounter" | "role" | "weapon" | "point" | "route" | "question" | "answer" | "summary" | "bounty" | "involvement" | "history" | "maoist";
   value: string;
   label: string;
   count: number;
@@ -56,8 +56,46 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
         });
       }
 
+      // Search in summary
+      if (report.summary && report.summary.toLowerCase().includes(queryLower)) {
+        allSuggestions.push({
+          type: "summary",
+          value: report.summary,
+          label: report.summary.substring(0, 100) + (report.summary.length > 100 ? "..." : ""),
+          count: 1,
+        });
+      }
+
+      // Search in basic report fields
+      if (report.police_station && report.police_station.toLowerCase().includes(queryLower)) {
+        allSuggestions.push({
+          type: "area",
+          value: report.police_station,
+          label: `Police Station: ${report.police_station}`,
+          count: 1,
+        });
+      }
+
+      if (report.division && report.division.toLowerCase().includes(queryLower)) {
+        allSuggestions.push({
+          type: "area",
+          value: report.division,
+          label: `Division: ${report.division}`,
+          count: 1,
+        });
+      }
+
+      if (report.area_committee && report.area_committee.toLowerCase().includes(queryLower)) {
+        allSuggestions.push({
+          type: "area",
+          value: report.area_committee,
+          label: `Area Committee: ${report.area_committee}`,
+          count: 1,
+        });
+      }
+
       if (report.metadata) {
-        // Search in names
+        // Search in basic metadata fields
         if (report.metadata.name && report.metadata.name.toLowerCase().includes(queryLower)) {
           allSuggestions.push({
             type: "name",
@@ -67,7 +105,6 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
           });
         }
 
-        // Search in areas/regions
         if (report.metadata.area_region && report.metadata.area_region.toLowerCase().includes(queryLower)) {
           allSuggestions.push({
             type: "area",
@@ -77,7 +114,6 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
           });
         }
 
-        // Search in groups/battalions
         if (report.metadata.group_battalion && report.metadata.group_battalion.toLowerCase().includes(queryLower)) {
           allSuggestions.push({
             type: "group",
@@ -87,7 +123,6 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
           });
         }
 
-        // Search in supply team/supply
         if (report.metadata.supply_team_supply && report.metadata.supply_team_supply.toLowerCase().includes(queryLower)) {
           allSuggestions.push({
             type: "supply",
@@ -97,7 +132,6 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
           });
         }
 
-        // Search in IED/Bomb
         if (report.metadata.ied_bomb && report.metadata.ied_bomb.toLowerCase().includes(queryLower)) {
           allSuggestions.push({
             type: "ied",
@@ -107,7 +141,6 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
           });
         }
 
-        // Search in Meeting
         if (report.metadata.meeting && report.metadata.meeting.toLowerCase().includes(queryLower)) {
           allSuggestions.push({
             type: "meeting",
@@ -117,12 +150,38 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
           });
         }
 
-        // Search in Platoon
         if (report.metadata.platoon && report.metadata.platoon.toLowerCase().includes(queryLower)) {
           allSuggestions.push({
             type: "platoon",
             value: report.metadata.platoon,
             label: report.metadata.platoon,
+            count: 1,
+          });
+        }
+
+        if (report.metadata.bounty && report.metadata.bounty.toLowerCase().includes(queryLower)) {
+          allSuggestions.push({
+            type: "bounty",
+            value: report.metadata.bounty,
+            label: `Bounty: ${report.metadata.bounty}`,
+            count: 1,
+          });
+        }
+
+        if (report.metadata.involvement && report.metadata.involvement.toLowerCase().includes(queryLower)) {
+          allSuggestions.push({
+            type: "involvement",
+            value: report.metadata.involvement,
+            label: report.metadata.involvement.substring(0, 80) + (report.metadata.involvement.length > 80 ? "..." : ""),
+            count: 1,
+          });
+        }
+
+        if (report.metadata.history && report.metadata.history.toLowerCase().includes(queryLower)) {
+          allSuggestions.push({
+            type: "history",
+            value: report.metadata.history,
+            label: report.metadata.history.substring(0, 80) + (report.metadata.history.length > 80 ? "..." : ""),
             count: 1,
           });
         }
@@ -155,6 +214,34 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
           });
         }
 
+        // Search in weapons/assets
+        if (report.metadata.weapons_assets && Array.isArray(report.metadata.weapons_assets)) {
+          report.metadata.weapons_assets.forEach((weapon) => {
+            if (typeof weapon === "string" && weapon.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "weapon",
+                value: weapon,
+                label: weapon,
+                count: 1,
+              });
+            }
+          });
+        }
+
+        // Search in important points
+        if (report.metadata.important_points && Array.isArray(report.metadata.important_points)) {
+          report.metadata.important_points.forEach((point) => {
+            if (typeof point === "string" && point.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "point",
+                value: point,
+                label: point.substring(0, 80) + (point.length > 80 ? "..." : ""),
+                count: 1,
+              });
+            }
+          });
+        }
+
         // Search in criminal activities
         if (report.metadata.criminal_activities && Array.isArray(report.metadata.criminal_activities)) {
           report.metadata.criminal_activities.forEach((activity) => {
@@ -162,7 +249,7 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
               allSuggestions.push({
                 type: "activity",
                 value: activity.incident,
-                label: activity.incident,
+                label: `${activity.year}: ${activity.incident}`,
                 count: 1,
               });
             }
@@ -176,6 +263,138 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
             }
           });
         }
+
+        // Search in police encounters
+        if (report.metadata.police_encounters && Array.isArray(report.metadata.police_encounters)) {
+          report.metadata.police_encounters.forEach((encounter) => {
+            if (encounter.encounter_details && encounter.encounter_details.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "encounter",
+                value: encounter.encounter_details,
+                label: `${encounter.year}: ${encounter.encounter_details.substring(0, 60)}${encounter.encounter_details.length > 60 ? "..." : ""}`,
+                count: 1,
+              });
+            }
+          });
+        }
+
+        // Search in hierarchical role changes
+        if (report.metadata.hierarchical_role_changes && Array.isArray(report.metadata.hierarchical_role_changes)) {
+          report.metadata.hierarchical_role_changes.forEach((roleChange) => {
+            if (roleChange.role && roleChange.role.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "role",
+                value: roleChange.role,
+                label: `${roleChange.year}: ${roleChange.role}`,
+                count: 1,
+              });
+            }
+          });
+        }
+
+        // Search in maoists met
+        if (report.metadata.maoists_met && Array.isArray(report.metadata.maoists_met)) {
+          report.metadata.maoists_met.forEach((maoist) => {
+            if (maoist.name && maoist.name.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "maoist",
+                value: maoist.name,
+                label: `${maoist.name} (${maoist.group || 'Unknown Group'})`,
+                count: 1,
+              });
+            }
+            if (maoist.group && maoist.group.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "group",
+                value: maoist.group,
+                label: maoist.group,
+                count: 1,
+              });
+            }
+          });
+        }
+
+        // Search in movement routes
+        if (report.metadata.movement_routes && Array.isArray(report.metadata.movement_routes)) {
+          report.metadata.movement_routes.forEach((route) => {
+            if (route.route_name && route.route_name.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "route",
+                value: route.route_name,
+                label: route.route_name,
+                count: 1,
+              });
+            }
+            if (route.description && route.description.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "route",
+                value: route.description,
+                label: route.description.substring(0, 60) + (route.description.length > 60 ? "..." : ""),
+                count: 1,
+              });
+            }
+            if (route.purpose && route.purpose.toLowerCase().includes(queryLower)) {
+              allSuggestions.push({
+                type: "route",
+                value: route.purpose,
+                label: `Purpose: ${route.purpose}`,
+                count: 1,
+              });
+            }
+
+            // Search in route segments
+            if (route.segments && Array.isArray(route.segments)) {
+              route.segments.forEach((segment) => {
+                if (segment.from && segment.from.toLowerCase().includes(queryLower)) {
+                  allSuggestions.push({
+                    type: "area",
+                    value: segment.from,
+                    label: `Route from: ${segment.from}`,
+                    count: 1,
+                  });
+                }
+                if (segment.to && segment.to.toLowerCase().includes(queryLower)) {
+                  allSuggestions.push({
+                    type: "area",
+                    value: segment.to,
+                    label: `Route to: ${segment.to}`,
+                    count: 1,
+                  });
+                }
+                if (segment.description && segment.description.toLowerCase().includes(queryLower)) {
+                  allSuggestions.push({
+                    type: "route",
+                    value: segment.description,
+                    label: segment.description.substring(0, 60) + (segment.description.length > 60 ? "..." : ""),
+                    count: 1,
+                  });
+                }
+              });
+            }
+          });
+        }
+      }
+
+      // Search in questions analysis
+      if (report.questions_analysis && report.questions_analysis.results) {
+        report.questions_analysis.results.forEach((result, index) => {
+          if (result.standard_question && result.standard_question.toLowerCase().includes(queryLower)) {
+            allSuggestions.push({
+              type: "question",
+              value: result.standard_question,
+              label: `Q${index + 1}: ${result.standard_question.substring(0, 60)}${result.standard_question.length > 60 ? "..." : ""}`,
+              count: 1,
+            });
+          }
+          if (result.answer && result.answer.toLowerCase().includes(queryLower)) {
+            allSuggestions.push({
+              type: "answer",
+              value: result.answer,
+              label: `A${index + 1}: ${result.answer.substring(0, 60)}${result.answer.length > 60 ? "..." : ""}`,
+              count: 1,
+            });
+          }
+        });
       }
     });
 
@@ -205,7 +424,7 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
         // Then alphabetically
         return a.value.localeCompare(b.value);
       })
-      .slice(0, 10); // Limit to 10 suggestions
+      .slice(0, 15); // Increased limit to 15 suggestions
   };
 
   // Generate filter suggestions for specific fields
@@ -357,6 +576,30 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
         return <Users className="h-4 w-4 text-green-500" />;
       case "platoon":
         return <Shield className="h-4 w-4 text-purple-500" />;
+      case "encounter":
+        return <Shield className="h-4 w-4 text-red-600" />;
+      case "role":
+        return <User className="h-4 w-4 text-indigo-500" />;
+      case "weapon":
+        return <Target className="h-4 w-4 text-orange-600" />;
+      case "point":
+        return <Zap className="h-4 w-4 text-yellow-500" />;
+      case "route":
+        return <MapPin className="h-4 w-4 text-blue-600" />;
+      case "question":
+        return <Search className="h-4 w-4 text-purple-600" />;
+      case "answer":
+        return <Zap className="h-4 w-4 text-green-600" />;
+      case "summary":
+        return <X className="h-4 w-4 text-gray-600" />;
+      case "bounty":
+        return <Zap className="h-4 w-4 text-yellow-600" />;
+      case "involvement":
+        return <User className="h-4 w-4 text-cyan-500" />;
+      case "history":
+        return <Calendar className="h-4 w-4 text-amber-500" />;
+      case "maoist":
+        return <User className="h-4 w-4 text-red-700" />;
       default:
         return <Search className="h-4 w-4 text-gray-400" />;
     }
@@ -387,6 +630,30 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
         return "Meeting";
       case "platoon":
         return "Platoon";
+      case "encounter":
+        return "Encounter";
+      case "role":
+        return "Role";
+      case "weapon":
+        return "Weapon";
+      case "point":
+        return "Point";
+      case "route":
+        return "Route";
+      case "question":
+        return "Question";
+      case "answer":
+        return "Answer";
+      case "summary":
+        return "Summary";
+      case "bounty":
+        return "Bounty";
+      case "involvement":
+        return "Involvement";
+      case "history":
+        return "History";
+      case "maoist":
+        return "Maoist";
       default:
         return "Result";
     }
@@ -418,7 +685,7 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
             onFocus={() => setShowSuggestions(query.length > 0 && suggestions.length > 0)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             onKeyDown={handleKeyDown}
-            placeholder="Search by name, location, incident, aliases, villages, or any keyword..."
+            placeholder="Search everywhere: names, locations, activities, questions, answers, routes, encounters, or any text..."
             className="w-full pl-10 pr-20 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
           />
 

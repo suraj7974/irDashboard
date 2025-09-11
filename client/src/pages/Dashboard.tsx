@@ -63,19 +63,124 @@ export default function Dashboard() {
 
     if (searchFilters.query) {
       const query = searchFilters.query.toLowerCase();
-      filtered = filtered.filter(
-        (report) =>
-          report.original_filename.toLowerCase().includes(query) ||
-          report.summary?.toLowerCase().includes(query) ||
-          report.metadata?.name?.toLowerCase().includes(query) ||
-          report.metadata?.area_region?.toLowerCase().includes(query) ||
-          report.metadata?.supply_team_supply?.toLowerCase().includes(query) ||
-          report.metadata?.ied_bomb?.toLowerCase().includes(query) ||
-          report.metadata?.meeting?.toLowerCase().includes(query) ||
-          report.metadata?.platoon?.toLowerCase().includes(query) ||
-          report.metadata?.aliases?.some((alias) => alias.toLowerCase().includes(query)) ||
-          report.metadata?.villages_covered?.some((village) => village.toLowerCase().includes(query))
-      );
+      filtered = filtered.filter((report) => {
+        // Helper function to safely check if a string contains the query
+        const contains = (text: any): boolean => {
+          if (!text) return false;
+          return String(text).toLowerCase().includes(query);
+        };
+
+        // Helper function to search in arrays
+        const searchInArray = (arr: any[] | undefined): boolean => {
+          if (!arr || !Array.isArray(arr)) return false;
+          return arr.some(item => {
+            if (typeof item === 'string') {
+              return contains(item);
+            } else if (typeof item === 'object' && item !== null) {
+              // Search in object properties
+              return Object.values(item).some(value => contains(value));
+            }
+            return false;
+          });
+        };
+
+        // Search in basic report fields
+        if (contains(report.original_filename) ||
+            contains(report.summary) ||
+            contains(report.police_station) ||
+            contains(report.division) ||
+            contains(report.area_committee) ||
+            contains(report.uid_for_name) ||
+            contains(report.rank)) {
+          return true;
+        }
+
+        // Search in metadata
+        if (report.metadata) {
+          const metadata = report.metadata;
+          
+          // Search in basic metadata fields
+          if (contains(metadata.name) ||
+              contains(metadata.group_battalion) ||
+              contains(metadata.area_region) ||
+              contains(metadata.supply_team_supply) ||
+              contains(metadata.ied_bomb) ||
+              contains(metadata.meeting) ||
+              contains(metadata.platoon) ||
+              contains(metadata.involvement) ||
+              contains(metadata.history) ||
+              contains(metadata.bounty) ||
+              contains(metadata.organizational_period)) {
+            return true;
+          }
+
+          // Search in array fields
+          if (searchInArray(metadata.aliases) ||
+              searchInArray(metadata.villages_covered) ||
+              searchInArray(metadata.weapons_assets) ||
+              searchInArray(metadata.important_points)) {
+            return true;
+          }
+
+          // Search in criminal activities
+          if (metadata.criminal_activities && searchInArray(metadata.criminal_activities)) {
+            return true;
+          }
+
+          // Search in police encounters
+          if (metadata.police_encounters && searchInArray(metadata.police_encounters)) {
+            return true;
+          }
+
+          // Search in hierarchical role changes
+          if (metadata.hierarchical_role_changes && searchInArray(metadata.hierarchical_role_changes)) {
+            return true;
+          }
+
+          // Search in maoists met
+          if (metadata.maoists_met && searchInArray(metadata.maoists_met)) {
+            return true;
+          }
+
+          // Search in movement routes
+          if (metadata.movement_routes && Array.isArray(metadata.movement_routes)) {
+            const routeMatch = metadata.movement_routes.some(route => {
+              if (contains(route.route_name) ||
+                  contains(route.description) ||
+                  contains(route.purpose) ||
+                  contains(route.frequency)) {
+                return true;
+              }
+              
+              // Search in route segments
+              if (route.segments && Array.isArray(route.segments)) {
+                return route.segments.some(segment => 
+                  contains(segment.from) ||
+                  contains(segment.to) ||
+                  contains(segment.description)
+                );
+              }
+              
+              return false;
+            });
+            
+            if (routeMatch) return true;
+          }
+        }
+
+        // Search in questions analysis
+        if (report.questions_analysis && report.questions_analysis.results) {
+          const questionMatch = report.questions_analysis.results.some(result => 
+            contains(result.standard_question) ||
+            contains(result.found_question) ||
+            contains(result.answer)
+          );
+          
+          if (questionMatch) return true;
+        }
+
+        return false;
+      });
     }
 
     if (searchFilters.suspectName) {
@@ -88,7 +193,8 @@ export default function Dashboard() {
       filtered = filtered.filter(
         (report) =>
           report.metadata?.area_region?.toLowerCase().includes(location) ||
-          report.metadata?.villages_covered?.some((village) => village.toLowerCase().includes(location))
+          (report.metadata?.villages_covered && Array.isArray(report.metadata.villages_covered) && 
+           report.metadata.villages_covered.some((village) => village.toLowerCase().includes(location)))
       );
     }
 
