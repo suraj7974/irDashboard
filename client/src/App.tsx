@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
-import Analytics from "./pages/Analytics";
+import Analytics from "./components/Analytics";
 import AppLayout from "./components/AppLayout";
 import "./App.css";
 
