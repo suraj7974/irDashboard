@@ -1,15 +1,27 @@
 import React from "react";
-import { Outlet, useLocation, Link } from "react-router-dom";
-import { FileText, Shield, LogOut } from "lucide-react";
+import { Outlet, useLocation, Link, useNavigate } from "react-router-dom";
+import { FileText, Shield, LogOut, BarChart3 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const isDashboard = location.pathname === "/dashboard";
+  const isAnalytics = location.pathname === "/incidents" || location.pathname === "/area-committees";
+
+  const handleTabChange = (tab: "dashboard" | "analytics") => {
+    if (tab === "dashboard") {
+      navigate("/dashboard");
+    } else {
+      navigate("/incidents");
+    }
+  };
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: FileText, current: location.pathname === '/dashboard' },
-    { name: 'Analytics', href: '/incidents', icon: Shield, current: location.pathname === '/incidents' || location.pathname === '/area-committees' }
+    { name: "Dashboard", href: "/dashboard", icon: FileText, current: location.pathname === "/dashboard" },
+    { name: "Analytics", href: "/incidents", icon: Shield, current: location.pathname === "/incidents" || location.pathname === "/area-committees" },
   ];
 
   return (
@@ -30,26 +42,29 @@ export default function AppLayout() {
                 </div>
               </div>
 
-              {/* Navigation Menu */}
-              <nav className="flex space-x-4">
-                {navigation.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        item.current
-                          ? 'bg-primary-100 text-primary-700'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{item.name}</span>
-                    </Link>
-                  );
-                })}
-              </nav>
+              {/* Tab Toggle - Centered */}
+              <div className="flex justify-center">
+                <div className="bg-gray-100 rounded-lg p-1 inline-flex">
+                  <button
+                    onClick={() => handleTabChange("dashboard")}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                      isDashboard ? "bg-white text-blue-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <FileText className="h-4 w-4 inline mr-2" />
+                    Dashboard
+                  </button>
+                  <button
+                    onClick={() => handleTabChange("analytics")}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                      isAnalytics ? "bg-white text-blue-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <BarChart3 className="h-4 w-4 inline mr-2" />
+                    Analytics
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* User Menu */}
