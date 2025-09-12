@@ -19,6 +19,7 @@ export const allowedUsers: string[] = [
   "sudsrkrace@gmail.com",
   "Jitendrairs@gmail.com",
   "Sumitkumardhotre@gmail.com",
+  "prabhat140387@gmail.com",
 ];
 
 export const isUserAllowed = (email: string): boolean => {
