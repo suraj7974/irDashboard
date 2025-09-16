@@ -13,12 +13,13 @@ export const allowedUsers: string[] = [
   "roshanahuja88@gmail.com",
   "chandrhass1994@gmail.com",
   "amankumarisjha@gmail.com",
-  "vipingautamooooo16@gmail.com",
+  "prabhat140387@gmail.com",
   "Jitendrairs@gmail.com",
   "sudsrkrace@gmail.com",
   "kumarravindrasopiya@gmail.com",
   "amankumarisjha@gmail.com",
   "Sumitkumardhotre@gmail.com",
+  "vipingautamooooo16@gmail.com",
   "opscellnpr@gmail.com",
 ];
 
