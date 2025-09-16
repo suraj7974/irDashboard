@@ -51,3 +51,5 @@ upload_script/pdfs/
 server/uploaded_reports/
 server/summaries/
 server/parser/__pycache__/
+
+.venv/
