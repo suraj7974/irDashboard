@@ -18,8 +18,9 @@ export const allowedUsers: string[] = [
   "sudsrkrace@gmail.com",
   "kumarravindrasopiya@gmail.com",
   "amankumarisjha@gmail.com",
-  "Sumitkumardhotre@gmail.com"
-  ];
+  "Sumitkumardhotre@gmail.com",
+  "opscellnpr@gmail.com",
+];
 
 export const isUserAllowed = (email: string): boolean => {
   return allowedUsers.includes(email.toLowerCase());
