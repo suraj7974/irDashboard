@@ -5,6 +5,22 @@ import { format } from "date-fns";
 import { IRReport } from "../types";
 import PDFViewer from "./PDFViewer";
 import RouteTracker from "./RouteTracker";
+import QuestionViewer from "./QuestionViewer";
+
+// Define the interface for question data (matching QuestionViewer)
+interface TableData {
+  headers: string[];
+  rows: string[][];
+}
+
+interface QuestionData {
+  question: string;
+  paragraphAnswer: string;
+  tableData?: TableData;
+  hasTable: boolean;
+  hasParagraph: boolean;
+  questionNumber: number;
+}
 
 interface ReportDetailModalProps {
   report: IRReport;
@@ -20,6 +36,71 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
   if (!isOpen) return null;
 
   const { metadata } = report;
+
+  // Function to parse questions into structured format for QuestionViewer
+  const parseQuestionsData = () => {
+    if (!report.questions_analysis?.results) return [];
+
+    return report.questions_analysis.results.map((result, index) => {
+      const answer = result.answer || '';
+      let paragraphAnswer = '';
+      let tableData: TableData | undefined = undefined;
+      let hasTable = false;
+      let hasParagraph = false;
+
+      if (answer.trim()) {
+        // Check if answer contains table-like data (pipe-separated or structured)
+        const lines = answer.split('\n').filter(line => line.trim());
+        const potentialTableLines = lines.filter(line => line.includes(' | '));
+        
+        if (potentialTableLines.length >= 1) {
+          // Separate paragraph and table content
+          const tableStartIndex = lines.findIndex(line => line.includes(' | '));
+          
+          // Everything before table is paragraph
+          if (tableStartIndex > 0) {
+            paragraphAnswer = lines.slice(0, tableStartIndex).join('\n');
+            hasParagraph = paragraphAnswer.trim() !== '';
+          }
+          
+          // Convert pipe-separated lines to table structure
+          const tableLines = lines.slice(tableStartIndex);
+          if (tableLines.length > 0) {
+            // First line of table data becomes headers
+            const headers = tableLines[0].split(' | ').map(cell => cell.trim());
+            
+            // Remaining lines become data rows
+            const rows = tableLines.length > 1 
+              ? tableLines.slice(1).map(line => {
+                  const cells = line.split(' | ').map(cell => cell.trim());
+                  // Ensure all rows have the same number of columns as headers
+                  while (cells.length < headers.length) {
+                    cells.push('');
+                  }
+                  return cells.slice(0, headers.length);
+                })
+              : [new Array(headers.length).fill('')]; // Create empty row if no data rows
+            
+            tableData = { headers, rows };
+            hasTable = true;
+          }
+        } else {
+          // No table data detected, treat everything as paragraph
+          paragraphAnswer = answer;
+          hasParagraph = answer.trim() !== '';
+        }
+      }
+      
+      return {
+        question: result.standard_question || `Question ${index + 1}`,
+        paragraphAnswer,
+        tableData,
+        hasTable,
+        hasParagraph,
+        questionNumber: index + 1
+      };
+    });
+  };
 
   // Debug log to see the actual data structure
   //console.log("Report metadata:", metadata);
@@ -466,80 +547,9 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
 
                     {report.questions_analysis.success ? (
                       <>
-                        {/* Questions and Answers */}
+                        {/* Questions and Answers using new QuestionViewer */}
                         {report.questions_analysis.results.length > 0 ? (
-                          <div className="space-y-4 max-h-96 overflow-y-auto">
-                            {report.questions_analysis.results.map((result, index) => {
-                              // Questions 28-40 should display as tables (index 27-39 since array is 0-based)
-                              const questionNumber = index + 1;
-                              const shouldShowAsTable = questionNumber >= 28 && questionNumber <= 40;
-
-                              // Function to parse tabular data for questions 28-40
-                              const parseTabularData = (answer: string) => {
-                                const rows = answer.split("\n").filter((row) => row.trim());
-                                return rows.map((row) => {
-                                  // Split by common delimiters: |, tab, or comma
-                                  if (row.includes("|")) {
-                                    return row.split("|").map((cell) => cell.trim());
-                                  } else if (row.includes("\t")) {
-                                    return row.split("\t").map((cell) => cell.trim());
-                                  } else if (row.includes(",")) {
-                                    return row.split(",").map((cell) => cell.trim());
-                                  } else {
-                                    return [row.trim()];
-                                  }
-                                });
-                              };
-
-                              const tableData = shouldShowAsTable && result.answer ? parseTabularData(result.answer) : [];
-
-                              return (
-                                <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                  <div className="mb-3">
-                                    <div className="flex items-center justify-between mb-1">
-                                      <h4 className="font-medium text-gray-900 text-sm">Question {questionNumber}:</h4>
-                                      {shouldShowAsTable && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Table Format</span>}
-                                    </div>
-                                    <p className="text-sm text-blue-700 bg-blue-50 p-2 rounded border">{result.standard_question}</p>
-                                  </div>
-
-                                  <div>
-                                    <span className="text-xs font-medium text-gray-600">Answer:</span>
-                                    {result.answer && result.answer.trim() !== "" ? (
-                                      shouldShowAsTable ? (
-                                        <div className="mt-2 bg-white rounded border border-gray-300 overflow-x-auto">
-                                          <table className="min-w-full divide-y divide-gray-200">
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                              {tableData.map((row, rowIndex) => (
-                                                <tr key={rowIndex} className={rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                                                  {row.map((cell, cellIndex) => (
-                                                    <td key={cellIndex} className="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 last:border-r-0">
-                                                      {cell || "-"}
-                                                    </td>
-                                                  ))}
-                                                </tr>
-                                              ))}
-                                            </tbody>
-                                          </table>
-                                          <div className="px-3 py-2 bg-gray-100 text-xs text-gray-500 border-t border-gray-200">
-                                            {tableData.length} row{tableData.length !== 1 ? "s" : ""} found
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <p className="mt-2 text-sm text-gray-700 bg-white p-3 rounded border border-gray-300 whitespace-pre-wrap">
-                                          {result.answer}
-                                        </p>
-                                      )
-                                    ) : (
-                                      <p className="mt-2 text-sm text-gray-500 bg-gray-100 p-3 rounded border border-gray-300 italic">
-                                        No answer found in the document
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                          <QuestionViewer questions={parseQuestionsData()} />
                         ) : (
                           <div className="text-center py-8 text-gray-500">
                             <HelpCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
