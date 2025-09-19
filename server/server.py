@@ -37,14 +37,9 @@ except ImportError:
             }
         )
 
-# Try to import questions processor
-try:
-    from questions.efficient_llm_processor import EfficientLLMProcessor
-    print("✅ Questions processor available")
-    QUESTIONS_AVAILABLE = True
-except ImportError:
-    print("⚠️ Questions processor not available")
-    QUESTIONS_AVAILABLE = False
+# Questions processor removed - using manual entry instead
+print("✅ Using manual question entry (AI processing disabled)")
+QUESTIONS_AVAILABLE = False
 
 
 # Initialize FastAPI app
@@ -113,60 +108,55 @@ async def process_pdf(file: UploadFile = File(...)):
 
         parsed_data = json.loads(summary_json)
 
-        # Add questions analysis if available
-        questions_analysis = None
-        if QUESTIONS_AVAILABLE:
-            try:
-                gemini_api_key = os.getenv('GEMINI_API_KEY')
-                if gemini_api_key:
-                    # Get batch size from environment or use default of 6 questions per batch
-                    batch_size = int(os.getenv('GEMINI_BATCH_SIZE', '6'))
-                    print(f"🔧 Using Gemini batch processing: {batch_size} questions per request")
-                    
-                    # Initialize processor with batch processing
-                    processor = EfficientLLMProcessor(api_key=gemini_api_key, batch_size=batch_size)
-                    questions_file_path = os.path.join("questions", "questions.txt")
-                    questions_analysis = processor.process_pdf_efficiently(temp_path, questions_file_path)
-                    print(f"✅ Questions analysis completed successfully")
-                else:
-                    print("⚠️ GEMINI_API_KEY not found, skipping questions analysis")
-            except Exception as e:
-                print(f"⚠️ Questions analysis failed: {e}")
-                # Return mock data for testing UI when API quota is exceeded
-                questions_analysis = {
-                    "success": True,
-                    "processing_time_seconds": 2.5,
-                    "summary": {
-                        "total_questions": 2,
-                        "questions_found": 1,
-                        "success_rate": 50.0
-                    },
-                    "results": [
-                        {
-                            "question": "संगठन में कब, कैसे, किसके संपर्क/प्रोत्साहन से, किस पद पर तथा किन परिस्थितियों में शामिल हुआ ? विस्तृत विवरण :-",
-                            "answer": "अंदा माड़वी 2018 में स्थानीय नक्सली कमांडर सोमारू के प्रोत्साहन से कमलापुर आरपीसी मिलिशिया प्लाटून में शामिल हुआ। वह गरीबी और पुलिस उत्पीड़न के कारण संगठन से जुड़ा।",
-                            "found": True,
-                            "confidence": 0.85
-                        },
-                        {
-                            "question": "नक्सली संगठन में सम्मिलित होने के पश्चात्‌ किस-किस पद पर, कब-कब और किस-किस क्षेत्र में रहकर काम किया ? इस दौरान प्रत्येक संगठन में प्रभारी/सचिव/कमाण्डर तथा सदस्य कौन-कौन थे, उनके नाम, पता, पद, हुलिया, धारित हथियार एवं अन्य विस्तृत विवरण :-",
-                            "answer": "",
-                            "found": False,
-                            "confidence": 0.0
-                        }
-                    ]
-                }
-                print(f"🧪 Using mock questions data for testing UI")
+        # Questions analysis removed - using manual entry instead
+        # Create empty questions structure for UI compatibility
+        questions_analysis = {
+            "success": True,
+            "processing_time_seconds": 0,
+            "summary": {
+                "total_questions": 60,
+                "questions_found": 0,
+                "success_rate": 0
+            },
+            "results": []
+        }
+        
+        # Initialize all 60 questions with empty answers for manual entry
+        standard_questions = []
+        try:
+            questions_file_path = os.path.join("questions", "questions.txt")
+            if os.path.exists(questions_file_path):
+                with open(questions_file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    # Extract questions from the file
+                    lines = content.split('\n')
+                    for line in lines:
+                        line = line.strip()
+                        if line and (line[0].isdigit() or line.startswith('(')):
+                            standard_questions.append(line)
+        except Exception as e:
+            print(f"⚠️ Could not load questions file: {e}")
+            
+        # Create empty results for all questions
+        for i, question in enumerate(standard_questions[:60]):  # Limit to 60 questions
+            questions_analysis["results"].append({
+                "question": question,
+                "standard_question": question,
+                "answer": "",
+                "found": False,
+                "confidence": 0.0,
+                "question_number": i + 1
+            })
+            
+        print(f"✅ Initialized {len(questions_analysis['results'])} questions for manual entry")
 
         response_data = {
             "success": True,
             "filename": file.filename,
             "data": parsed_data,
             "raw_text_length": len(extracted_text),
+            "questions_analysis": questions_analysis
         }
-        
-        if questions_analysis:
-            response_data["questions_analysis"] = questions_analysis
 
         return JSONResponse(content=response_data)
 

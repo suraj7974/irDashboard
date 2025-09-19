@@ -31,7 +31,22 @@ import { format } from "date-fns";
 import { IRReport } from "../types";
 import PDFViewer from "./PDFViewer";
 import RouteTracker from "./RouteTracker";
+import QuestionEditor from "./QuestionEditor";
 import { IRReportAPI } from "../api/reports";
+import { STANDARD_QUESTIONS } from "../constants/questions";
+
+// Define the interface for question data
+interface QuestionData {
+  question: string;
+  paragraphAnswer: string;  // Separate paragraph content
+  tableData?: {
+    headers: string[];
+    rows: string[][];
+  };
+  hasTable: boolean;        // Whether this question has table content
+  hasParagraph: boolean;    // Whether this question has paragraph content
+  questionNumber: number;
+}
 
 interface ReportDetailModalProps {
   report: IRReport | null;
@@ -56,12 +71,91 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
+  // Questions state for the new editor
+  const [questionsData, setQuestionsData] = useState<QuestionData[]>([]);
+
   // Sync local report state with prop changes
   useEffect(() => {
     if (report) {
       setLocalReport(report);
     }
   }, [report]);
+
+  // Initialize questions data from report
+  useEffect(() => {
+    if (localReport.questions_analysis?.results) {
+      const questions: QuestionData[] = localReport.questions_analysis.results.map((result, index) => {
+        const answer = result.answer || '';
+        
+        // Try to detect if answer contains table data (pipe-separated format)
+        const lines = answer.split('\n').filter(line => line.trim());
+        let paragraphAnswer = '';
+        let tableData = undefined;
+        let hasTable = false;
+        let hasParagraph = false;
+        
+        // Check if we have pipe-separated data that looks like a table
+        const potentialTableLines = lines.filter(line => line.includes(' | '));
+        if (potentialTableLines.length >= 1) {
+          // Separate paragraph and table content
+          const tableStartIndex = lines.findIndex(line => line.includes(' | '));
+          
+          // Everything before table is paragraph
+          if (tableStartIndex > 0) {
+            paragraphAnswer = lines.slice(0, tableStartIndex).join('\n');
+            hasParagraph = paragraphAnswer.trim() !== '';
+          }
+          
+          // Convert pipe-separated lines to table structure
+          const tableLines = lines.slice(tableStartIndex);
+          if (tableLines.length > 0) {
+            // First line of table data becomes headers
+            const headers = tableLines[0].split(' | ').map(cell => cell.trim());
+            
+            // Remaining lines become data rows
+            const rows = tableLines.length > 1 
+              ? tableLines.slice(1).map(line => {
+                  const cells = line.split(' | ').map(cell => cell.trim());
+                  // Ensure all rows have the same number of columns as headers
+                  while (cells.length < headers.length) {
+                    cells.push('');
+                  }
+                  return cells.slice(0, headers.length);
+                })
+              : [new Array(headers.length).fill('')]; // Create empty row if no data rows
+            
+            tableData = { headers, rows };
+            hasTable = true;
+          }
+        } else {
+          // No table data detected, treat everything as paragraph
+          paragraphAnswer = answer;
+          hasParagraph = answer.trim() !== '';
+        }
+        
+        return {
+          question: result.standard_question || `Question ${index + 1}`,
+          paragraphAnswer,
+          tableData,
+          hasTable,
+          hasParagraph,
+          questionNumber: index + 1
+        };
+      });
+      setQuestionsData(questions);
+    } else {
+      // Initialize with default questions if no analysis exists
+      const defaultQuestions: QuestionData[] = STANDARD_QUESTIONS.map((question, index) => ({
+        questionNumber: index + 1,
+        question,
+        paragraphAnswer: "",
+        tableData: undefined,
+        hasTable: false,
+        hasParagraph: true
+      }));
+      setQuestionsData(defaultQuestions);
+    }
+  }, [localReport.questions_analysis]);
 
   // Debug log to see the actual data structure
   // console.log("Report metadata:", metadata);
@@ -180,6 +274,85 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
         console.log("✅ Movement routes updated successfully");
       } catch (error) {
         console.error("❌ Failed to update movement routes:", error);
+        // Revert on error
+        setLocalReport(localReport);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [localReport, onReportUpdate]
+  );
+
+  // Handle questions changes
+  const handleQuestionsChange = useCallback(
+    async (questions: QuestionData[]) => {
+      try {
+        setSaving(true);
+
+        // Convert questions back to the format expected by the report
+        const results = questions.map((q, index) => {
+          let answer = '';
+          
+          // Add paragraph content
+          if (q.hasParagraph && q.paragraphAnswer.trim()) {
+            answer += q.paragraphAnswer.trim();
+          }
+          
+          // Add table content - preserve structure for better display
+          if (q.hasTable && q.tableData) {
+            if (answer) answer += '\n\n'; // Add spacing between paragraph and table
+            
+            // Create a more structured table representation
+            // Include headers in the first row for better parsing later
+            const tableText = [
+              q.tableData.headers.join(' | '),
+              ...q.tableData.rows.map(row => row.join(' | '))
+            ].join('\n');
+            
+            answer += tableText;
+          }
+
+          return {
+            standard_question: q.question,
+            found_question: q.question, // Using the same question as found_question
+            answer: answer,
+            found: answer.trim() !== '',
+          };
+        });
+
+        // Update local report
+        const updatedReport = {
+          ...localReport,
+          questions_analysis: {
+            ...localReport.questions_analysis,
+            success: true,
+            processing_time_seconds: localReport.questions_analysis?.processing_time_seconds || 0,
+            results: results,
+            summary: {
+              ...localReport.questions_analysis?.summary,
+              total_questions: results.length,
+              questions_found: results.filter(r => r.found).length,
+              success_rate: (results.filter(r => r.found).length / results.length) * 100
+            }
+          },
+        };
+
+        setLocalReport(updatedReport);
+        setQuestionsData(questions);
+
+        // Save to database
+        await IRReportAPI.updateReport(localReport.id, {
+          questions_analysis: updatedReport.questions_analysis,
+        });
+
+        // Notify parent
+        if (onReportUpdate) {
+          onReportUpdate(updatedReport);
+        }
+
+        console.log("✅ Questions updated successfully");
+      } catch (error) {
+        console.error("❌ Failed to update questions:", error);
         // Revert on error
         setLocalReport(localReport);
       } finally {
@@ -1016,149 +1189,18 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                 )}
 
                 {/* Questions Analysis */}
-                {localReport.questions_analysis && (
+                {questionsData.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                       <HelpCircle className="h-5 w-5 mr-2" />
-                      Standard Questions
+                      Standard Questions ({questionsData.length})
                     </h3>
 
-                    {localReport.questions_analysis.success ? (
-                      <>
-                        {/* Questions and Answers */}
-                        {localReport.questions_analysis.results.length > 0 ? (
-                          <div className="space-y-4 max-h-96 overflow-y-auto">
-                            {localReport.questions_analysis.results.map((result, index) => {
-                              // Questions 28-40 should display as tables (index 27-39 since array is 0-based)
-                              const questionNumber = index + 1;
-                              const shouldShowAsTable = questionNumber >= 28 && questionNumber <= 40;
-
-                              // Function to parse tabular data for questions 28-40
-                              const parseTabularData = (answer: string) => {
-                                const rows = answer.split("\n").filter((row) => row.trim());
-                                return rows.map((row) => {
-                                  // Split by common delimiters: |, tab, or comma
-                                  if (row.includes("|")) {
-                                    return row.split("|").map((cell) => cell.trim());
-                                  } else if (row.includes("\t")) {
-                                    return row.split("\t").map((cell) => cell.trim());
-                                  } else if (row.includes(",")) {
-                                    return row.split(",").map((cell) => cell.trim());
-                                  } else {
-                                    return [row.trim()];
-                                  }
-                                });
-                              };
-
-                              const tableData = shouldShowAsTable && result.answer ? parseTabularData(result.answer) : [];
-
-                              return (
-                                <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                  <div className="mb-3">
-                                    <p className="text-sm text-blue-700 bg-blue-50 p-2 rounded border">{result.standard_question}</p>
-                                  </div>
-
-                                  <div>
-                                    <div className="flex items-start justify-between mb-2">
-                                      <span className="text-xs font-medium text-gray-600">Answer:</span>
-                                      {!(editingQuestionIndex === index && editingField === `question_${index}`) && (
-                                        <button
-                                          onClick={() => startEditingQuestion(index, result.answer || "")}
-                                          className="p-1 hover:bg-gray-100 rounded transition-colors"
-                                          title="Edit answer"
-                                        >
-                                          <Edit3 className="h-3 w-3 text-gray-400" />
-                                        </button>
-                                      )}
-                                    </div>
-
-                                    {editingQuestionIndex === index && editingField === `question_${index}` ? (
-                                      <div className="space-y-2">
-                                        <textarea
-                                          value={editValues[`question_${index}`] !== undefined ? editValues[`question_${index}`] : ""}
-                                          onChange={(e) =>
-                                            setEditValues((prev: any) => ({
-                                              ...prev,
-                                              [`question_${index}`]: e.target.value,
-                                            }))
-                                          }
-                                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                          rows={shouldShowAsTable ? 8 : 4}
-                                          placeholder="Enter answer..."
-                                        />
-
-                                        <div className="flex items-center space-x-2">
-                                          <button
-                                            onClick={() => saveField(`question_${index}`)}
-                                            disabled={saving}
-                                            className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
-                                          >
-                                            <Save className="h-3 w-3" />
-                                            <span>{saving ? "Saving..." : "Save"}</span>
-                                          </button>
-                                          <button
-                                            onClick={cancelEditing}
-                                            disabled={saving}
-                                            className="flex items-center space-x-1 px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400"
-                                          >
-                                            <RotateCcw className="h-3 w-3" />
-                                            <span>Cancel</span>
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ) : result.answer && result.answer.trim() !== "" ? (
-                                      shouldShowAsTable ? (
-                                        <div className="bg-white rounded border border-gray-300 overflow-x-auto">
-                                          <table className="min-w-full divide-y divide-gray-200">
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                              {tableData.map((row, rowIndex) => (
-                                                <tr key={rowIndex} className={rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                                                  {row.map((cell, cellIndex) => (
-                                                    <td key={cellIndex} className="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 last:border-r-0">
-                                                      {cell || "-"}
-                                                    </td>
-                                                  ))}
-                                                </tr>
-                                              ))}
-                                            </tbody>
-                                          </table>
-                                          <div className="px-3 py-2 bg-gray-100 text-xs text-gray-500 border-t border-gray-200">
-                                            {tableData.length} row
-                                            {tableData.length !== 1 ? "s" : ""} found
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <p className="text-sm text-gray-700 bg-white p-3 rounded border border-gray-300 whitespace-pre-wrap">{result.answer}</p>
-                                      )
-                                    ) : (
-                                      <p className="text-sm text-gray-500 bg-gray-100 p-3 rounded border border-gray-300 italic">
-                                        No answer found in the document
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="text-center py-8 text-gray-500">
-                            <HelpCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                            <p>No questions were processed from this document.</p>
-                            <p className="text-xs mt-2">Total questions processed: {localReport.questions_analysis.summary.total_questions}</p>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <div className="flex items-center">
-                          <XCircle className="h-5 w-5 text-red-600 mr-2" />
-                          <div>
-                            <p className="text-sm font-medium text-red-900">Questions analysis failed</p>
-                            {localReport.questions_analysis.error && <p className="text-sm text-red-700 mt-1">{localReport.questions_analysis.error}</p>}
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    <QuestionEditor
+                      questions={questionsData}
+                      onQuestionsChange={handleQuestionsChange}
+                      saving={saving}
+                    />
                   </div>
                 )}
 
