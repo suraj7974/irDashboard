@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { AlertCircle, Users, FileText, Search, Eye, MapPin, Shield, Building } from "lucide-react";
 import { IRReportAPI } from "../api/reports";
 import { IRReport } from "../types";
+import ReportDetailModal from "./ReportDetailModal";
 
 interface SimpleAreaCommittee {
   ac_name: string;
@@ -14,10 +15,11 @@ interface ACDetailsModalProps {
   ac: SimpleAreaCommittee | null;
   isOpen: boolean;
   onClose: () => void;
+  onReportClick: (reportName: string) => void;
 }
 
 // Modal component for AC details
-function ACDetailsModal({ ac, isOpen, onClose }: ACDetailsModalProps) {
+function ACDetailsModal({ ac, isOpen, onClose, onReportClick }: ACDetailsModalProps) {
   if (!isOpen || !ac) return null;
 
   return (
@@ -63,7 +65,13 @@ function ACDetailsModal({ ac, isOpen, onClose }: ACDetailsModalProps) {
               <div className="space-y-2">
                 {ac.reports.map((report, index) => (
                   <div key={index} className="bg-white rounded px-3 py-2 border">
-                    <span className="text-sm text-gray-700">{report}</span>
+                    <span 
+                      onClick={() => onReportClick(report)}
+                      className="text-sm text-blue-600 hover:text-blue-800 cursor-pointer underline transition-colors"
+                      title="Click to view full IR report"
+                    >
+                      {report}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -96,6 +104,9 @@ export default function AreaCommitteeAnalytics() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAC, setSelectedAC] = useState<SimpleAreaCommittee | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<IRReport | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
 
   useEffect(() => {
     loadAreaCommittees();
@@ -186,6 +197,30 @@ export default function AreaCommitteeAnalytics() {
   const handleCloseModal = () => {
     setSelectedAC(null);
     setIsModalOpen(false);
+  };
+
+  const handleReportClick = async (reportName: string) => {
+    try {
+      setReportLoading(true);
+      const reports = await IRReportAPI.getReports();
+      const targetReport = reports.find(r => r.original_filename === reportName);
+      if (targetReport) {
+        setSelectedReport(targetReport);
+        setIsReportModalOpen(true);
+        setIsModalOpen(false); // Close the AC modal
+      } else {
+        console.warn('Report not found:', reportName);
+      }
+    } catch (error) {
+      console.error('Failed to load report:', error);
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const handleCloseReportModal = () => {
+    setSelectedReport(null);
+    setIsReportModalOpen(false);
   };
 
   if (loading) {
@@ -312,7 +347,22 @@ export default function AreaCommitteeAnalytics() {
       )}
 
       {/* Modal */}
-      <ACDetailsModal ac={selectedAC} isOpen={isModalOpen} onClose={handleCloseModal} />
+      <ACDetailsModal 
+        ac={selectedAC} 
+        isOpen={isModalOpen} 
+        onClose={handleCloseModal} 
+        onReportClick={handleReportClick}
+      />
+      
+      {/* Report Detail Modal */}
+      {selectedReport && (
+        <ReportDetailModal
+          report={selectedReport}
+          isOpen={isReportModalOpen}
+          onClose={handleCloseReportModal}
+          onDownload={async () => {}} // Empty handler for host branch
+        />
+      )}
     </div>
   );
 }

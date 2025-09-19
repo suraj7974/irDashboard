@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { AlertCircle, Users, FileText, Search, Eye, Calendar, MapPin, Shield, UserCheck } from "lucide-react";
 import { IRReportAPI } from "../api/reports";
 import { IRReport } from "../types";
+import ReportDetailModal from "./ReportDetailModal";
 
 interface SimpleIncident {
   incident_name: string;
@@ -16,10 +17,11 @@ interface IncidentDetailsModalProps {
   incident: SimpleIncident | null;
   isOpen: boolean;
   onClose: () => void;
+  onReportClick: (reportName: string) => void;
 }
 
 // Modal component for incident details
-function IncidentDetailsModal({ incident, isOpen, onClose }: IncidentDetailsModalProps) {
+function IncidentDetailsModal({ incident, isOpen, onClose, onReportClick }: IncidentDetailsModalProps) {
   if (!isOpen || !incident) return null;
 
   return (
@@ -74,7 +76,13 @@ function IncidentDetailsModal({ incident, isOpen, onClose }: IncidentDetailsModa
               <div className="space-y-2">
                 {incident.reports.map((report, index) => (
                   <div key={index} className="bg-white rounded px-3 py-2 border">
-                    <span className="text-sm text-gray-700">{report}</span>
+                    <span 
+                      onClick={() => onReportClick(report)}
+                      className="text-sm text-blue-600 hover:text-blue-800 cursor-pointer underline transition-colors"
+                      title="Click to view full IR report"
+                    >
+                      {report}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -113,6 +121,9 @@ export default function IncidentAnalytics() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIncident, setSelectedIncident] = useState<SimpleIncident | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<IRReport | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
 
   useEffect(() => {
     loadIncidents();
@@ -213,9 +224,33 @@ export default function IncidentAnalytics() {
     setIsModalOpen(true);
   };
 
+  const handleReportClick = async (reportName: string) => {
+    try {
+      setReportLoading(true);
+      const reports = await IRReportAPI.getReports();
+      const targetReport = reports.find(r => r.original_filename === reportName);
+      if (targetReport) {
+        setSelectedReport(targetReport);
+        setIsReportModalOpen(true);
+        setIsModalOpen(false); // Close the incident modal
+      } else {
+        console.warn('Report not found:', reportName);
+      }
+    } catch (error) {
+      console.error('Failed to load report:', error);
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   const handleCloseModal = () => {
     setSelectedIncident(null);
     setIsModalOpen(false);
+  };
+
+  const handleCloseReportModal = () => {
+    setSelectedReport(null);
+    setIsReportModalOpen(false);
   };
 
   if (loading) {
@@ -384,7 +419,18 @@ export default function IncidentAnalytics() {
         incident={selectedIncident}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+        onReportClick={handleReportClick}
       />
+      
+      {/* Report Detail Modal */}
+      {selectedReport && (
+        <ReportDetailModal
+          report={selectedReport}
+          isOpen={isReportModalOpen}
+          onClose={handleCloseReportModal}
+          onDownload={async () => {}} // Empty handler for host branch
+        />
+      )}
     </div>
   );
 }
