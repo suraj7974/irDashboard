@@ -42,62 +42,63 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
     if (!report.questions_analysis?.results) return [];
 
     return report.questions_analysis.results.map((result, index) => {
-      const answer = result.answer || '';
-      let paragraphAnswer = '';
+      const answer = result.answer || "";
+      let paragraphAnswer = "";
       let tableData: TableData | undefined = undefined;
       let hasTable = false;
       let hasParagraph = false;
 
       if (answer.trim()) {
         // Check if answer contains table-like data (pipe-separated or structured)
-        const lines = answer.split('\n').filter(line => line.trim());
-        const potentialTableLines = lines.filter(line => line.includes(' | '));
-        
+        const lines = answer.split("\n").filter((line) => line.trim());
+        const potentialTableLines = lines.filter((line) => line.includes(" | "));
+
         if (potentialTableLines.length >= 1) {
           // Separate paragraph and table content
-          const tableStartIndex = lines.findIndex(line => line.includes(' | '));
-          
+          const tableStartIndex = lines.findIndex((line) => line.includes(" | "));
+
           // Everything before table is paragraph
           if (tableStartIndex > 0) {
-            paragraphAnswer = lines.slice(0, tableStartIndex).join('\n');
-            hasParagraph = paragraphAnswer.trim() !== '';
+            paragraphAnswer = lines.slice(0, tableStartIndex).join("\n");
+            hasParagraph = paragraphAnswer.trim() !== "";
           }
-          
+
           // Convert pipe-separated lines to table structure
           const tableLines = lines.slice(tableStartIndex);
           if (tableLines.length > 0) {
             // First line of table data becomes headers
-            const headers = tableLines[0].split(' | ').map(cell => cell.trim());
-            
+            const headers = tableLines[0].split(" | ").map((cell) => cell.trim());
+
             // Remaining lines become data rows
-            const rows = tableLines.length > 1 
-              ? tableLines.slice(1).map(line => {
-                  const cells = line.split(' | ').map(cell => cell.trim());
-                  // Ensure all rows have the same number of columns as headers
-                  while (cells.length < headers.length) {
-                    cells.push('');
-                  }
-                  return cells.slice(0, headers.length);
-                })
-              : [new Array(headers.length).fill('')]; // Create empty row if no data rows
-            
+            const rows =
+              tableLines.length > 1
+                ? tableLines.slice(1).map((line) => {
+                    const cells = line.split(" | ").map((cell) => cell.trim());
+                    // Ensure all rows have the same number of columns as headers
+                    while (cells.length < headers.length) {
+                      cells.push("");
+                    }
+                    return cells.slice(0, headers.length);
+                  })
+                : [new Array(headers.length).fill("")]; // Create empty row if no data rows
+
             tableData = { headers, rows };
             hasTable = true;
           }
         } else {
           // No table data detected, treat everything as paragraph
           paragraphAnswer = answer;
-          hasParagraph = answer.trim() !== '';
+          hasParagraph = answer.trim() !== "";
         }
       }
-      
+
       return {
         question: result.standard_question || `Question ${index + 1}`,
         paragraphAnswer,
         tableData,
         hasTable,
         hasParagraph,
-        questionNumber: index + 1
+        questionNumber: index + 1,
       };
     });
   };
@@ -533,9 +534,7 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload 
                 )}
 
                 {/* Movement Routes */}
-                {metadata.movement_routes && metadata.movement_routes.length > 0 && (
-                  <RouteTracker routes={metadata.movement_routes} />
-                )}
+                {metadata.movement_routes && metadata.movement_routes.length > 0 && <RouteTracker routes={metadata.movement_routes} />}
 
                 {/* Questions Analysis */}
                 {report.questions_analysis && (
