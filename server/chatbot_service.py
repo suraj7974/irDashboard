@@ -9,8 +9,31 @@ Features:
 - Conversation context and memory
 - Natural language response generation
 - Follow-up suggestions
+- Multi-district support with proper isolation
 
 Main function: process_improved_chatbot_query(query, session_id)
+
+Environment Variables Required:
+- SUPABASE_URL: Your Supabase project URL
+- SUPABASE_KEY: Your Supabase service role key
+- GEMINI_API_KEY: Your Google Gemini API key
+- IR_REPORTS_TABLE: Table name for this district (default: "ir_reports")
+- DISTRICT_PREFIX: Unique prefix for this district (default: "default")
+
+Multi-District Setup:
+To use the same codebase for multiple districts, ensure each has:
+1. Unique IR_REPORTS_TABLE (e.g., "district1_ir_reports", "district2_ir_reports")
+2. Unique DISTRICT_PREFIX (e.g., "district1", "district2")
+3. Same Supabase credentials but different tables
+4. Sessions and rate limiting are automatically isolated per district
+
+Example .env for District 1:
+IR_REPORTS_TABLE=district1_ir_reports
+DISTRICT_PREFIX=district1
+
+Example .env for District 2:
+IR_REPORTS_TABLE=district2_ir_reports
+DISTRICT_PREFIX=district2
 """
 import re
 import os
@@ -29,27 +52,44 @@ load_dotenv()
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_KEY")
 gemini_api_key = os.getenv("GEMINI_API_KEY")
+# Table name can be configured per district
+table_name = os.getenv("IR_REPORTS_TABLE", "ir_reports")  # Default to "ir_reports"
+# District prefix for isolating sessions and rate limiting between districts
+district_prefix = os.getenv("DISTRICT_PREFIX", "default")
 
 if not supabase_url or not supabase_key:
     print("⚠️ Warning: Supabase credentials not found. Chatbot will use mock data.")
     supabase = None
 else:
     supabase: Client = create_client(supabase_url, supabase_key)
+    print(f"✅ Supabase initialized with table: {table_name} (district: {district_prefix})")
 
 if gemini_api_key:
     genai.configure(api_key=gemini_api_key)
     gemini_model = genai.GenerativeModel('gemini-1.5-flash')
-    print("✅ Gemini AI initialized")
+    print(f"✅ Gemini AI initialized for district: {district_prefix}")
     
-    # Track rate limiting
-    gemini_last_request = 0
-    gemini_request_count = 0
-    gemini_rate_limit = 8  # Conservative limit to avoid quota issues
+    # Track rate limiting per district - using global dict with district keys
+    if not hasattr(genai, '_district_rate_limits'):
+        genai._district_rate_limits = {}
+    
+    if district_prefix not in genai._district_rate_limits:
+        genai._district_rate_limits[district_prefix] = {
+            'last_request': 0,
+            'request_count': 0,
+            'rate_limit': 8  # Conservative limit per district
+        }
+    
+    # Get district-specific rate limiting vars
+    district_rate_data = genai._district_rate_limits[district_prefix]
+    gemini_last_request = district_rate_data['last_request']
+    gemini_request_count = district_rate_data['request_count']
+    gemini_rate_limit = district_rate_data['rate_limit']
 else:
     gemini_model = None
-    print("⚠️ Warning: Gemini API key not found. AI features disabled.")
+    print(f"⚠️ Warning: Gemini API key not found. AI features disabled for district: {district_prefix}")
 
-# Conversation sessions storage
+# Conversation sessions storage - isolated per district
 conversation_sessions = {}
 
 class ConversationManager:
@@ -57,13 +97,18 @@ class ConversationManager:
     
     @classmethod
     def get_or_create_session(cls, session_id: str = None) -> Dict[str, Any]:
-        """Get existing session or create new one"""
+        """Get existing session or create new one - isolated per district"""
         if not session_id:
             session_id = str(uuid.uuid4())
         
-        if session_id not in conversation_sessions:
-            conversation_sessions[session_id] = {
-                "session_id": session_id,
+        # Add district prefix to session ID for isolation
+        district_session_id = f"{district_prefix}_{session_id}"
+        
+        if district_session_id not in conversation_sessions:
+            conversation_sessions[district_session_id] = {
+                "session_id": session_id,  # Original session ID for client
+                "district_session_id": district_session_id,  # Internal ID with district
+                "district": district_prefix,
                 "created_at": time.time(),
                 "last_activity": time.time(),
                 "query_history": [],
@@ -76,11 +121,11 @@ class ConversationManager:
                 }
             }
         
-        return conversation_sessions[session_id]
+        return conversation_sessions[district_session_id]
     
     @classmethod
     def add_query_to_session(cls, session_id: str, query: str, intent: Dict, results: List[Dict]):
-        """Add query and results to session history"""
+        """Add query and results to session history - district isolated"""
         session = cls.get_or_create_session(session_id)
         
         # Update session
@@ -184,8 +229,11 @@ class ImprovedQueryParser:
     
     @classmethod
     async def parse_query_with_context(cls, query: str, session_id: str = None) -> Dict[str, Any]:
-        """Parse query with conversation context"""
-        global gemini_last_request, gemini_request_count
+        """Parse query with conversation context - district isolated"""
+        # Get district-specific rate limiting data
+        district_rate_data = getattr(genai, '_district_rate_limits', {}).get(district_prefix, {
+            'last_request': 0, 'request_count': 0, 'rate_limit': 8
+        })
         
         # Get session context
         session = ConversationManager.get_or_create_session(session_id) if session_id else None
@@ -194,14 +242,14 @@ class ImprovedQueryParser:
         if not gemini_model:
             return cls._fallback_parse(query, context)
         
-        # Rate limiting
+        # District-specific rate limiting
         current_time = time.time()
-        if current_time - gemini_last_request < 60:
-            if gemini_request_count >= gemini_rate_limit:
-                print("⚠️ Rate limit reached, using fallback parsing")
+        if current_time - district_rate_data['last_request'] < 60:
+            if district_rate_data['request_count'] >= district_rate_data['rate_limit']:
+                print(f"⚠️ Rate limit reached for district {district_prefix}, using fallback parsing")
                 return cls._fallback_parse(query, context)
         else:
-            gemini_request_count = 0
+            district_rate_data['request_count'] = 0
         
         try:
             # Build context-aware prompt
@@ -246,8 +294,14 @@ class ImprovedQueryParser:
                 gemini_model.generate_content, prompt
             )
             
-            gemini_last_request = current_time
-            gemini_request_count += 1
+            # Update district-specific rate limiting
+            district_rate_data['last_request'] = current_time
+            district_rate_data['request_count'] += 1
+            
+            # Save back to global rate limits
+            if not hasattr(genai, '_district_rate_limits'):
+                genai._district_rate_limits = {}
+            genai._district_rate_limits[district_prefix] = district_rate_data
             
             # Parse response
             response_text = response.text.strip()
@@ -308,8 +362,8 @@ class PreciseSemanticSearcher:
             return cls._get_mock_reports(intent)
         
         try:
-            # Get all reports
-            all_reports_result = supabase.table("ir_reports").select("*").limit(1000).execute()
+            # Get all reports from the configured table
+            all_reports_result = supabase.table(table_name).select("*").limit(1000).execute()
             
             if not all_reports_result.data:
                 print("📊 No reports found in database")
@@ -467,8 +521,11 @@ class ContextualResponseGenerator:
     
     @classmethod
     async def generate_contextual_response(cls, reports: List[Dict[str, Any]], intent: Dict[str, Any], session_id: str = None) -> Dict[str, Any]:
-        """Generate response with conversation context"""
-        global gemini_last_request, gemini_request_count
+        """Generate response with conversation context - district isolated"""
+        # Get district-specific rate limiting data
+        district_rate_data = getattr(genai, '_district_rate_limits', {}).get(district_prefix, {
+            'last_request': 0, 'request_count': 0, 'rate_limit': 8
+        })
         
         # Get session context
         session = ConversationManager.get_or_create_session(session_id) if session_id else None
@@ -476,14 +533,14 @@ class ContextualResponseGenerator:
         if not gemini_model:
             return cls._fallback_response(reports, intent, session)
         
-        # Rate limiting
+        # District-specific rate limiting
         current_time = time.time()
-        if current_time - gemini_last_request < 60:
-            if gemini_request_count >= gemini_rate_limit:
-                print("⚠️ Rate limit reached, using fallback response")
+        if current_time - district_rate_data['last_request'] < 60:
+            if district_rate_data['request_count'] >= district_rate_data['rate_limit']:
+                print(f"⚠️ Rate limit reached for district {district_prefix}, using fallback response")
                 return cls._fallback_response(reports, intent, session)
         else:
-            gemini_request_count = 0
+            district_rate_data['request_count'] = 0
         
         try:
             # If no reports found, provide better guidance
@@ -519,8 +576,14 @@ class ContextualResponseGenerator:
                 gemini_model.generate_content, prompt
             )
             
-            gemini_last_request = current_time
-            gemini_request_count += 1
+            # Update district-specific rate limiting
+            district_rate_data['last_request'] = current_time
+            district_rate_data['request_count'] += 1
+            
+            # Save back to global rate limits
+            if not hasattr(genai, '_district_rate_limits'):
+                genai._district_rate_limits = {}
+            genai._district_rate_limits[district_prefix] = district_rate_data
             
             # Create sources
             sources = []
