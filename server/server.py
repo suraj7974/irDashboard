@@ -77,6 +77,50 @@ async def root_head():
     return
 
 
+@app.post("/chatbot/query")
+async def chatbot_query(request: dict):
+    """
+    Handle chatbot queries with intelligent search and conversation context
+    """
+    try:
+        query = request.get("query", "").strip()
+        if not query:
+            raise HTTPException(status_code=400, detail="Query is required")
+
+        print(f"🤖 Chatbot query: {query}")
+
+        # Import the chatbot service functions
+        from chatbot_service import process_improved_chatbot_query
+        
+        # Get session ID from request
+        session_id = request.get("sessionId")
+        
+        # Process the query with improved search and context
+        response_data = await process_improved_chatbot_query(query, session_id)
+        
+        return JSONResponse(content=response_data)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Chatbot error: {e}")
+        # Fallback response
+        response_data = {
+            "success": True,
+            "response": f"I received your query: '{query}'. I'm searching through the reports but encountered an issue. Please try rephrasing your question.",
+            "sources": [],
+            "intent": {
+                "intent_type": "general",
+                "entities": {},
+                "confidence": 0.5,
+                "originalQuery": query
+            },
+            "followUpSuggestions": [],
+            "sessionId": session_id
+        }
+        return JSONResponse(content=response_data)
+
+
 @app.post("/process-pdf")
 async def process_pdf(file: UploadFile = File(...)):
     print(f"📝 Received file: {file.filename}")

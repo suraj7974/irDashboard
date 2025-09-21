@@ -5,6 +5,7 @@ import FileUpload from "../components/FileUpload";
 import SearchBar from "../components/SearchBar";
 import ReportCard from "../components/ReportCard";
 import ReportDetailModal from "../components/ReportDetailModal";
+import Chatbot from "../components/Chatbot";
 import { IRReport, SearchFilters, UploadProgress } from "../types";
 import { IRReportAPI } from "../api/reports";
 import { ParserService } from "../services/parser";
@@ -422,6 +423,15 @@ export default function Dashboard() {
           />
         )}
       </AnimatePresence>
+
+      {/* Chatbot */}
+      <Chatbot onReportSelect={(reportId) => {
+        const report = reports.find(r => r.id === reportId);
+        if (report) {
+          setSelectedReport(report);
+          setShowDetailModal(true);
+        }
+      }} />
     </div>
   );
 }
