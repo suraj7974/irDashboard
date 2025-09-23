@@ -178,6 +178,7 @@ export class IRReportAPI {
       area_committee?: string;
       uid_for_name?: string;
       rank?: string;
+      rpc?: string;
     }
   ): Promise<IRReport> {
     // Client-side validation

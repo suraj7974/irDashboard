@@ -26,6 +26,7 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
     area_committee: report.area_committee || "",
     uid_for_name: report.uid_for_name || "",
     rank: report.rank || "",
+    rpc: report.rpc || "",
   });
 
   const rankOptions = ["Szc", "Dvc", "Acm /ppcm", "Coy", "BN", "Pm", "Militia", "Rpc", "Others"];
@@ -153,10 +154,10 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
 
   // Check if any field can be edited
   const canEditAnyField =
-    canEditField("police_station") || canEditField("division") || canEditField("area_committee") || canEditField("uid_for_name") || canEditField("rank");
+    canEditField("police_station") || canEditField("division") || canEditField("area_committee") || canEditField("uid_for_name") || canEditField("rank") || canEditField("rpc");
 
   // Check if any field has data to show the section
-  const hasAnyManualDetails = report.police_station || report.division || report.area_committee || report.uid_for_name || report.rank;
+  const hasAnyManualDetails = report.police_station || report.division || report.area_committee || report.uid_for_name || report.rank || report.rpc;
 
   // Render individual field with edit capability
   const renderField = (fieldName: keyof typeof fieldValues, label: string, icon: React.ReactNode, placeholder: string, isDropdown = false) => {
@@ -356,6 +357,7 @@ export default function ReportCard({ report, onViewDetails, onDownload, onReport
                 {renderField("area_committee", "Area Committee", <Users className="h-4 w-4 text-blue-600" />, "Enter area committee")}
                 {renderField("uid_for_name", "UID for Name", <Hash className="h-4 w-4 text-blue-600" />, "Enter unique identifier")}
                 {renderField("rank", "Rank", <Award className="h-4 w-4 text-blue-600" />, "Select rank", true)}
+                {renderField("rpc", "RPC", <Shield className="h-4 w-4 text-blue-600" />, "Enter RPC")}
               </div>
 
               {/* Show message if no details and can't edit */}

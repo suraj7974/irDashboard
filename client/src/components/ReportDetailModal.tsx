@@ -709,6 +709,8 @@ export default function ReportDetailModal({ report, isOpen, onClose, onDownload,
                       <EditableField fieldKey="uid_for_name" label="UID for Name" value={localReport.uid_for_name} icon={Hash} />
 
                       <EditableField fieldKey="rank" label="Rank" value={localReport.rank} icon={Award} />
+
+                      <EditableField fieldKey="rpc" label="RPC" value={localReport.rpc} icon={Shield} />
                     </div>
                   </div>
                 </div>

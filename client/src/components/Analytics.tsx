@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { AlertCircle, MapPin } from "lucide-react";
+import { AlertCircle, MapPin, Shield } from "lucide-react";
 import IncidentAnalytics from "./IncidentAnalytics";
 import AreaCommitteeAnalytics from "./AreaCommitteeAnalytics";
+import RPCAnalytics from "./RPCAnalytics";
 
-type AnalyticsTab = "incidents" | "area-committees";
+type AnalyticsTab = "incidents" | "area-committees" | "rpc";
 
 export default function Analytics() {
   const [activeTab, setActiveTab] = useState<AnalyticsTab>("incidents");
@@ -20,6 +21,12 @@ export default function Analytics() {
       name: "Area Committees",
       icon: MapPin,
       description: "Area committee analytics and associations",
+    },
+    {
+      id: "rpc" as AnalyticsTab,
+      name: "RPC",
+      icon: Shield,
+      description: "RPC analytics and associations",
     },
   ];
 
@@ -66,6 +73,11 @@ export default function Analytics() {
         {activeTab === "area-committees" && (
           <div>
             <AreaCommitteeAnalytics />
+          </div>
+        )}
+        {activeTab === "rpc" && (
+          <div>
+            <RPCAnalytics />
           </div>
         )}
       </div>

@@ -17,6 +17,7 @@ export interface IRReport {
   area_committee?: string;
   uid_for_name?: string;
   rank?: string;
+  rpc?: string;
   manual_details_set?: boolean;
   // Image fields
   profile_image_url?: string;
@@ -110,6 +111,7 @@ export interface SearchFilters {
   division?: string;
   area_committee?: string;
   rank?: string;
+  rpc?: string;
 }
 
 export interface UploadProgress {

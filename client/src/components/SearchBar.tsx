@@ -658,6 +658,7 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
     divisionQuery,
     areaCommitteeQuery,
     filters.rank,
+    filters.rpc,
   ].filter(Boolean).length;
 
   return (
@@ -883,6 +884,28 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
                         ))}
                     </select>
                   </div>
+
+                  {/* RPC Filter */}
+                  <div>
+                    <label htmlFor="rpc" className="block text-xs font-medium text-gray-700 mb-1">
+                      RPC
+                    </label>
+                    <select
+                      id="rpc"
+                      value={filters.rpc || ""}
+                      onChange={(e) => onFiltersChange({ ...filters, rpc: e.target.value || undefined })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="">All RPCs</option>
+                      {Array.from(new Set(reports.filter((r) => r.rpc).map((r) => r.rpc!)))
+                        .sort()
+                        .map((rpc) => (
+                          <option key={rpc} value={rpc}>
+                            {rpc}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
                 </div>
 
                 {/* Clear Filters Button */}
@@ -899,6 +922,7 @@ export default function SearchBar({ filters, onFiltersChange, onSearch, reports 
                         division: undefined,
                         area_committee: undefined,
                         rank: undefined,
+                        rpc: undefined,
                       });
                     }}
                     className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors"
