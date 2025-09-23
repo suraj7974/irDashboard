@@ -17,6 +17,7 @@ export interface IRReport {
   area_committee?: string;
   uid_for_name?: string;
   rank?: string;
+  rpc?: string;
 }
 
 export interface IRReportMetadata {
